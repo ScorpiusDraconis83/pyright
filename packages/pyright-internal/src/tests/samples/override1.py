@@ -2,7 +2,11 @@
 # in PEP 698.
 
 from typing import Callable
-from typing_extensions import Any, overload, override
+from typing_extensions import (  # pyright: ignore[reportMissingModuleSource]
+    Any,
+    overload,
+    override,
+)
 
 
 class ClassA:

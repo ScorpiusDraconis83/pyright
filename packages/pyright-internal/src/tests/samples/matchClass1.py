@@ -1,7 +1,19 @@
 # This sample tests type checking for match statements (as
 # described in PEP 634) that contain class patterns.
 
-from typing import Any, Generic, Literal, NamedTuple, TypeVar
+from typing import (
+    Any,
+    Generic,
+    Literal,
+    NamedTuple,
+    Protocol,
+    TypeVar,
+    TypedDict,
+    runtime_checkable,
+)
+from typing_extensions import (  # pyright: ignore[reportMissingModuleSource]
+    LiteralString,
+)
 from dataclasses import dataclass, field
 
 foo = 3
@@ -21,12 +33,10 @@ class ClassB(Generic[T]):
     attr_b: str
 
 
-class ClassC:
-    ...
+class ClassC: ...
 
 
-class ClassD(ClassC):
-    ...
+class ClassD(ClassC): ...
 
 
 def test_unknown(value_to_match):
@@ -75,6 +85,15 @@ def test_custom_type(value_to_match: ClassA | ClassB[int] | ClassB[str] | ClassC
             reveal_type(value_to_match, expected_text="ClassC")
 
 
+def test_subclass(value_to_match: ClassD):
+    match value_to_match:
+        case ClassC() as a1:
+            reveal_type(a1, expected_text="ClassD")
+
+        case _ as a2:
+            reveal_type(a2, expected_text="Never")
+
+
 def test_literal(value_to_match: Literal[3]):
     match value_to_match:
         case int() as a1:
@@ -88,6 +107,19 @@ def test_literal(value_to_match: Literal[3]):
         case str() as a3:
             reveal_type(a3, expected_text="Never")
             reveal_type(value_to_match, expected_text="Never")
+
+
+def test_literal_string(value_to_match: LiteralString) -> None:
+    match value_to_match:
+        case "a" as a1:
+            reveal_type(value_to_match, expected_text="Literal['a']")
+            reveal_type(a1, expected_text="Literal['a']")
+        case str() as a2:
+            reveal_type(value_to_match, expected_text="LiteralString")
+            reveal_type(a2, expected_text="LiteralString")
+        case a3:
+            reveal_type(value_to_match, expected_text="Never")
+            reveal_type(a3, expected_text="Never")
 
 
 TFloat = TypeVar("TFloat", bound=float)
@@ -257,16 +289,13 @@ def func7(subj: object):
 T2 = TypeVar("T2")
 
 
-class Parent(Generic[T]):
-    ...
+class Parent(Generic[T]): ...
 
 
-class Child1(Parent[T]):
-    ...
+class Child1(Parent[T]): ...
 
 
-class Child2(Parent[T], Generic[T, T2]):
-    ...
+class Child2(Parent[T], Generic[T, T2]): ...
 
 
 def func8(subj: Parent[int]):
@@ -325,6 +354,10 @@ def func11(subj: Any):
             reveal_type(subj, expected_text="Child2[Unknown, Unknown]")
 
 
+class TD1(TypedDict):
+    x: int
+
+
 def func12(subj: int, flt_cls: type[float], union_val: float | int):
     match subj:
         # This should generate an error because int doesn't accept two arguments.
@@ -342,6 +375,10 @@ def func12(subj: int, flt_cls: type[float], union_val: float | int):
 
         # This should generate an error because it is a union.
         case union_val():
+            pass
+
+        # This should generate an error because it is a TypedDict.
+        case TD1():
             pass
 
 
@@ -420,3 +457,63 @@ def func18(x: str | float | bool | None):
         case _:
             reveal_type(x, expected_text="int | None")
     reveal_type(x, expected_text="str | float | bool | int | None")
+
+
+T5 = TypeVar("T5", complex, str)
+
+
+def func19(x: T5) -> T5:
+    match x:
+        case complex():
+            return x
+        case str():
+            return x
+
+    reveal_type(x, expected_text="float* | int*")
+    return x
+
+
+T6 = TypeVar("T6", bound=complex | str)
+
+
+def func20(x: T6) -> T6:
+    match x:
+        case complex():
+            return x
+        case str():
+            return x
+
+    reveal_type(x, expected_text="float* | int*")
+    return x
+
+
+@runtime_checkable
+class Proto1(Protocol):
+    x: int
+
+
+class Proto2(Protocol):
+    x: int
+
+
+def func21(subj: object):
+    match subj:
+        case Proto1():
+            pass
+
+        # This should generate an error because Proto2 isn't runtime checkable.
+        case Proto2():
+            pass
+
+
+class Impl1:
+    x: int
+
+
+def func22(subj: Proto1 | int):
+    match subj:
+        case Proto1():
+            reveal_type(subj, expected_text="Proto1")
+
+        case _:
+            reveal_type(subj, expected_text="int")

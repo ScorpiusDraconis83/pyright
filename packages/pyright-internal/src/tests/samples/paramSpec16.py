@@ -2,7 +2,10 @@
 # ParamSpec.
 
 from typing import Callable, Generic, TypeVar
-from typing_extensions import Concatenate, ParamSpec
+from typing_extensions import (  # pyright: ignore[reportMissingModuleSource]
+    Concatenate,
+    ParamSpec,
+)
 
 P = ParamSpec("P")
 Q = ParamSpec("Q")
@@ -15,7 +18,9 @@ class ClassA(Generic[P, T, Q, U]):
     ...
 
 
-def decorator1(func: Callable[Concatenate[Callable[P, T], Q], U]) -> ClassA[P, T, Q, U]:
+def decorator1(
+    func: Callable[Concatenate[Callable[P, T], Q], U],
+) -> ClassA[P, T, Q, U]:
     ...
 
 

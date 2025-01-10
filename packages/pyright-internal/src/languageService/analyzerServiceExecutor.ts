@@ -13,8 +13,9 @@ import { AnalyzerService, getNextServiceId } from '../analyzer/service';
 import { CommandLineOptions } from '../common/commandLineOptions';
 import { LogLevel } from '../common/console';
 import { FileSystem } from '../common/fileSystem';
+import { LanguageServerBaseInterface, ServerSettings } from '../common/languageServerInterface';
 import { Uri } from '../common/uri/uri';
-import { LanguageServerInterface, ServerSettings } from '../languageServerBase';
+
 import { WellKnownWorkspaceKinds, Workspace, createInitStatus } from '../workspaceFactory';
 
 export interface CloneOptions {
@@ -23,21 +24,20 @@ export interface CloneOptions {
     fileSystem?: FileSystem;
 }
 
+export interface RunOptions {
+    typeStubTargetImportName?: string;
+    trackFiles?: boolean;
+    pythonEnvironmentName?: string;
+}
+
 export class AnalyzerServiceExecutor {
-    static runWithOptions(
-        languageServiceRootUri: Uri,
-        workspace: Workspace,
-        serverSettings: ServerSettings,
-        typeStubTargetImportName?: string,
-        trackFiles = true
-    ): void {
+    static runWithOptions(workspace: Workspace, serverSettings: ServerSettings, options?: RunOptions): void {
         const commandLineOptions = getEffectiveCommandLineOptions(
-            languageServiceRootUri.getFilePath(),
-            workspace.rootUri.getFilePath(),
+            workspace.rootUri,
             serverSettings,
-            trackFiles,
-            typeStubTargetImportName,
-            workspace.pythonEnvironmentName
+            options?.trackFiles ?? true,
+            options?.typeStubTargetImportName,
+            options?.pythonEnvironmentName
         );
 
         // Setting options causes the analyzer service to re-analyze everything.
@@ -45,7 +45,7 @@ export class AnalyzerServiceExecutor {
     }
 
     static async cloneService(
-        ls: LanguageServerInterface,
+        ls: LanguageServerBaseInterface,
         workspace: Workspace,
         options?: CloneOptions
     ): Promise<AnalyzerService> {
@@ -59,8 +59,6 @@ export class AnalyzerServiceExecutor {
             ...workspace,
             workspaceName: `temp workspace for cloned service`,
             rootUri: workspace.rootUri,
-            pythonPath: workspace.pythonPath,
-            pythonPathKind: workspace.pythonPathKind,
             kinds: [...workspace.kinds, WellKnownWorkspaceKinds.Cloned],
             service: workspace.service.clone(
                 instanceName,
@@ -69,6 +67,7 @@ export class AnalyzerServiceExecutor {
                 options.fileSystem
             ),
             disableLanguageServices: true,
+            disableTaggedHints: true,
             disableOrganizeImports: true,
             disableWorkspaceSymbol: true,
             isInitialized: createInitStatus(),
@@ -76,50 +75,48 @@ export class AnalyzerServiceExecutor {
         };
 
         const serverSettings = await ls.getSettings(workspace);
-        AnalyzerServiceExecutor.runWithOptions(
-            ls.rootUri,
-            tempWorkspace,
-            serverSettings,
-            options.typeStubTargetImportName,
-            /* trackFiles */ false
-        );
+        AnalyzerServiceExecutor.runWithOptions(tempWorkspace, serverSettings, {
+            typeStubTargetImportName: options.typeStubTargetImportName,
+            trackFiles: false,
+        });
 
         return tempWorkspace.service;
     }
 }
 
 function getEffectiveCommandLineOptions(
-    languageServiceRootPath: string,
-    workspaceRootPath: string,
+    workspaceRootUri: Uri | undefined,
     serverSettings: ServerSettings,
     trackFiles: boolean,
     typeStubTargetImportName?: string,
     pythonEnvironmentName?: string
 ) {
-    const commandLineOptions = new CommandLineOptions(workspaceRootPath, true);
-    commandLineOptions.checkOnlyOpenFiles = serverSettings.openFilesOnly;
-    commandLineOptions.useLibraryCodeForTypes = serverSettings.useLibraryCodeForTypes;
-    commandLineOptions.typeCheckingMode = serverSettings.typeCheckingMode;
-    commandLineOptions.autoImportCompletions = serverSettings.autoImportCompletions;
-    commandLineOptions.indexing = serverSettings.indexing;
-    commandLineOptions.taskListTokens = serverSettings.taskListTokens;
-    commandLineOptions.logTypeEvaluationTime = serverSettings.logTypeEvaluationTime ?? false;
-    commandLineOptions.typeEvaluationTimeThreshold = serverSettings.typeEvaluationTimeThreshold ?? 50;
-    commandLineOptions.enableAmbientAnalysis = trackFiles;
-    commandLineOptions.pythonEnvironmentName = pythonEnvironmentName;
+    const commandLineOptions = new CommandLineOptions(workspaceRootUri, true);
+    commandLineOptions.languageServerSettings.checkOnlyOpenFiles = serverSettings.openFilesOnly;
+    commandLineOptions.configSettings.useLibraryCodeForTypes = serverSettings.useLibraryCodeForTypes;
+    commandLineOptions.configSettings.typeCheckingMode = serverSettings.typeCheckingMode;
+    commandLineOptions.languageServerSettings.autoImportCompletions = serverSettings.autoImportCompletions;
+    commandLineOptions.languageServerSettings.indexing = serverSettings.indexing;
+    commandLineOptions.languageServerSettings.taskListTokens = serverSettings.taskListTokens;
+    commandLineOptions.languageServerSettings.logTypeEvaluationTime = serverSettings.logTypeEvaluationTime ?? false;
+    commandLineOptions.languageServerSettings.typeEvaluationTimeThreshold =
+        serverSettings.typeEvaluationTimeThreshold ?? 50;
+    commandLineOptions.languageServerSettings.enableAmbientAnalysis = trackFiles;
+    commandLineOptions.configSettings.pythonEnvironmentName = pythonEnvironmentName;
+    commandLineOptions.languageServerSettings.disableTaggedHints = serverSettings.disableTaggedHints;
 
     if (!trackFiles) {
-        commandLineOptions.watchForSourceChanges = false;
-        commandLineOptions.watchForLibraryChanges = false;
-        commandLineOptions.watchForConfigChanges = false;
+        commandLineOptions.languageServerSettings.watchForSourceChanges = false;
+        commandLineOptions.languageServerSettings.watchForLibraryChanges = false;
+        commandLineOptions.languageServerSettings.watchForConfigChanges = false;
     } else {
-        commandLineOptions.watchForSourceChanges = serverSettings.watchForSourceChanges;
-        commandLineOptions.watchForLibraryChanges = serverSettings.watchForLibraryChanges;
-        commandLineOptions.watchForConfigChanges = serverSettings.watchForConfigChanges;
+        commandLineOptions.languageServerSettings.watchForSourceChanges = serverSettings.watchForSourceChanges;
+        commandLineOptions.languageServerSettings.watchForLibraryChanges = serverSettings.watchForLibraryChanges;
+        commandLineOptions.languageServerSettings.watchForConfigChanges = serverSettings.watchForConfigChanges;
     }
 
     if (serverSettings.venvPath) {
-        commandLineOptions.venvPath = serverSettings.venvPath.getFilePath();
+        commandLineOptions.languageServerSettings.venvPath = serverSettings.venvPath.getFilePath();
     }
 
     if (serverSettings.pythonPath) {
@@ -127,7 +124,7 @@ function getEffectiveCommandLineOptions(
         // the local python interpreter should be used rather than interpreting the
         // setting value as a path to the interpreter. We'll simply ignore it in this case.
         if (!isPythonBinary(serverSettings.pythonPath.getFilePath())) {
-            commandLineOptions.pythonPath = serverSettings.pythonPath.getFilePath();
+            commandLineOptions.languageServerSettings.pythonPath = serverSettings.pythonPath.getFilePath();
         }
     }
 
@@ -135,30 +132,31 @@ function getEffectiveCommandLineOptions(
         // Pyright supports only one typeshed path currently, whereas the
         // official VS Code Python extension supports multiple typeshed paths.
         // We'll use the first one specified and ignore the rest.
-        commandLineOptions.typeshedPath = serverSettings.typeshedPath.getFilePath();
+        commandLineOptions.configSettings.typeshedPath = serverSettings.typeshedPath.getFilePath();
     }
 
     if (serverSettings.stubPath) {
-        commandLineOptions.stubPath = serverSettings.stubPath.getFilePath();
+        commandLineOptions.configSettings.stubPath = serverSettings.stubPath.getFilePath();
     }
 
     if (serverSettings.logLevel === LogLevel.Log) {
         // When logLevel is "Trace", turn on verboseOutput as well
         // so we can get detailed log from analysis service.
-        commandLineOptions.verboseOutput = true;
+        commandLineOptions.configSettings.verboseOutput = true;
     }
 
     if (typeStubTargetImportName) {
-        commandLineOptions.typeStubTargetImportName = typeStubTargetImportName;
+        commandLineOptions.languageServerSettings.typeStubTargetImportName = typeStubTargetImportName;
     }
 
-    commandLineOptions.autoSearchPaths = serverSettings.autoSearchPaths;
-    commandLineOptions.extraPaths = serverSettings.extraPaths?.map((e) => e.getFilePath()) ?? [];
-    commandLineOptions.diagnosticSeverityOverrides = serverSettings.diagnosticSeverityOverrides;
+    commandLineOptions.configSettings.autoSearchPaths = serverSettings.autoSearchPaths;
+    commandLineOptions.configSettings.extraPaths = serverSettings.extraPaths?.map((e) => e.getFilePath()) ?? [];
+    commandLineOptions.configSettings.diagnosticSeverityOverrides = serverSettings.diagnosticSeverityOverrides;
+    commandLineOptions.configSettings.diagnosticBooleanOverrides = serverSettings.diagnosticBooleanOverrides;
 
-    commandLineOptions.includeFileSpecs = serverSettings.includeFileSpecs ?? [];
-    commandLineOptions.excludeFileSpecs = serverSettings.excludeFileSpecs ?? [];
-    commandLineOptions.ignoreFileSpecs = serverSettings.ignoreFileSpecs ?? [];
+    commandLineOptions.configSettings.includeFileSpecs = serverSettings.includeFileSpecs ?? [];
+    commandLineOptions.configSettings.excludeFileSpecs = serverSettings.excludeFileSpecs ?? [];
+    commandLineOptions.configSettings.ignoreFileSpecs = serverSettings.ignoreFileSpecs ?? [];
 
     return commandLineOptions;
 }

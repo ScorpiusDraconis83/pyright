@@ -1,8 +1,12 @@
 # This sample tests the case where an ellipsis is used to specialize
 # a generic class parameterized by a ParamSpec.
 
-from typing import Callable, Generic, Protocol
-from typing_extensions import Concatenate, ParamSpec, TypeAlias
+from typing import Callable, Generic, Protocol, assert_type
+from typing_extensions import (  # pyright: ignore[reportMissingModuleSource]
+    Concatenate,
+    ParamSpec,
+    TypeAlias,
+)
 
 P = ParamSpec("P")
 
@@ -39,6 +43,10 @@ concat_handler1: ConcatHandler[...] = func1
 
 # This should generate an error because the first param of func2 is not int.
 concat_handler2: ConcatHandler[...] = func2
+
+
+def func0(x: ConcatCallableHandler[str, str]):
+    assert_type(x, Callable[[int, str, str], None])
 
 
 class Command(Generic[P]):

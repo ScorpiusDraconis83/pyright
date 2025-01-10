@@ -1,10 +1,9 @@
 from decimal import Decimal
-from typing import Any
-from typing_extensions import Literal
+from typing import Any, Literal
 
 from markupsafe import Markup
-from wtforms.fields import Field, FormField, SelectFieldBase, StringField
-from wtforms.fields.choices import _Option
+from wtforms.fields import Field, FormField, StringField
+from wtforms.fields.choices import SelectFieldBase, _Option
 
 __all__ = (
     "CheckboxInput",

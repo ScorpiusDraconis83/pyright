@@ -2,7 +2,9 @@
 # when applied to a decorator function.
 
 from typing import Any, Callable, TypeVar, overload
-from typing_extensions import dataclass_transform
+from typing_extensions import (  # pyright: ignore[reportMissingModuleSource]
+    dataclass_transform,
+)
 
 _T = TypeVar("_T")
 

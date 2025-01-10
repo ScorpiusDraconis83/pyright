@@ -2,7 +2,7 @@
 # when it binds to a ParamSpec.
 
 from typing import Any, Callable, TypeVar
-from typing_extensions import ParamSpec
+from typing_extensions import ParamSpec  # pyright: ignore[reportMissingModuleSource]
 
 T = TypeVar("T")
 P = ParamSpec("P")

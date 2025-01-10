@@ -9,7 +9,6 @@
  */
 
 import { Char } from '../common/charCodes';
-import { maxStringTokenLength } from './tokenizer';
 import { FStringMiddleToken, StringToken, StringTokenFlags } from './tokenizerTypes';
 
 export const enum UnescapeErrorType {
@@ -40,14 +39,19 @@ interface IncompleteUnescapedString {
     nonAsciiInBytes: boolean;
 }
 
-function completeUnescapedString(incomplete: IncompleteUnescapedString): UnescapedString {
+function completeUnescapedString(incomplete: IncompleteUnescapedString, originalString: string): UnescapedString {
+    const newValue = incomplete.valueParts.join('');
+    // Use the original string if it's identical. This prevents us from allocating
+    // memory to hold a copy. A copy is made because the original string is a
+    // 'slice' of another, so it doesn't exist in the cache yet.
+    const value = originalString !== newValue ? newValue : originalString;
     return {
         ...incomplete,
-        value: incomplete.valueParts.join(''),
+        value,
     };
 }
 
-export function getUnescapedString(stringToken: StringToken | FStringMiddleToken): UnescapedString {
+export function getUnescapedString(stringToken: StringToken | FStringMiddleToken, elideCrlf = true): UnescapedString {
     const escapedString = stringToken.escapedValue;
     const isRaw = (stringToken.flags & StringTokenFlags.Raw) !== 0;
 
@@ -89,14 +93,11 @@ export function getUnescapedString(stringToken: StringToken | FStringMiddleToken
     const addInvalidEscapeOffset = () => {
         // Invalid escapes are not reported for raw strings.
         if (!isRaw) {
-            // If this is the last character of a truncated string, don't report.
-            if ((stringToken.flags & StringTokenFlags.ExceedsMaxSize) === 0 || strOffset < maxStringTokenLength) {
-                output.unescapeErrors.push({
-                    offset: strOffset - 1,
-                    length: 2,
-                    errorType: UnescapeErrorType.InvalidEscapeSequence,
-                });
-            }
+            output.unescapeErrors.push({
+                offset: strOffset - 1,
+                length: 2,
+                errorType: UnescapeErrorType.InvalidEscapeSequence,
+            });
         }
     };
 
@@ -142,7 +143,7 @@ export function getUnescapedString(stringToken: StringToken | FStringMiddleToken
     while (true) {
         let curChar = getEscapedCharacter();
         if (curChar === Char.EndOfText) {
-            return completeUnescapedString(output);
+            return completeUnescapedString(output, escapedString);
         }
 
         if (curChar === Char.Backslash) {
@@ -224,6 +225,12 @@ export function getUnescapedString(stringToken: StringToken | FStringMiddleToken
                         case Char.N: {
                             let foundIllegalChar = false;
                             let charCount = 1;
+
+                            // This type of escape isn't allowed for bytes.
+                            if (isBytes) {
+                                foundIllegalChar = true;
+                            }
+
                             if (getEscapedCharacter(charCount) !== Char.OpenBrace) {
                                 foundIllegalChar = true;
                             } else {
@@ -260,11 +267,12 @@ export function getUnescapedString(stringToken: StringToken | FStringMiddleToken
                         }
 
                         case Char.u:
-                            localValue = scanHexEscape(4);
-                            break;
-
                         case Char.U:
-                            localValue = scanHexEscape(8);
+                            // This type of escape isn't allowed for bytes.
+                            if (isBytes) {
+                                addInvalidEscapeOffset();
+                            }
+                            localValue = scanHexEscape(curChar === Char.u ? 4 : 8);
                             break;
 
                         default:
@@ -297,7 +305,9 @@ export function getUnescapedString(stringToken: StringToken | FStringMiddleToken
         } else if (curChar === Char.LineFeed || curChar === Char.CarriageReturn) {
             // Skip over the escaped new line (either one or two characters).
             if (curChar === Char.CarriageReturn && getEscapedCharacter(1) === Char.LineFeed) {
-                appendOutputChar(curChar);
+                if (!elideCrlf) {
+                    appendOutputChar(curChar);
+                }
                 strOffset++;
                 curChar = getEscapedCharacter();
             }

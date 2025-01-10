@@ -2,7 +2,10 @@
 # in PEP 675.
 
 from typing import Iterable
-from typing_extensions import Literal, LiteralString
+from typing_extensions import (  # pyright: ignore[reportMissingModuleSource]
+    Literal,
+    LiteralString,
+)
 
 
 def func1(a: str, b: bytes, c: Literal["a"], d: Literal["a", "b"], e: Literal["a", 1]):

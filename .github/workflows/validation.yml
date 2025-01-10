@@ -1,7 +1,7 @@
 name: 'Validation'
 
 env:
-  NODE_VERSION: '16' # Shipped with VS Code.
+  NODE_VERSION: '18' # Shipped with VS Code.
   PYTHON_VERSION: 3.11
 
 on:
@@ -19,17 +19,18 @@ jobs:
     name: Typecheck
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Get npm cache directory
         id: npm-cache
+        shell: bash
         run: |
-          echo "::set-output name=dir::$(npm config get cache)"
-      - uses: actions/cache@v3
+          echo "dir=$(npm config get cache)" >> $GITHUB_OUTPUT
+      - uses: actions/cache@v4
         with:
           path: ${{ steps.npm-cache.outputs.dir }}
           key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
@@ -46,17 +47,18 @@ jobs:
     name: Style
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Get npm cache directory
         id: npm-cache
+        shell: bash
         run: |
-          echo "::set-output name=dir::$(npm config get cache)"
-      - uses: actions/cache@v3
+          echo "dir=$(npm config get cache)" >> $GITHUB_OUTPUT
+      - uses: actions/cache@v4
         with:
           path: ${{ steps.npm-cache.outputs.dir }}
           key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
@@ -81,9 +83,9 @@ jobs:
     needs: typecheck
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
 
@@ -92,9 +94,10 @@ jobs:
       - name: Get npm cache directory
         if: runner.os != 'Windows'
         id: npm-cache
+        shell: bash
         run: |
-          echo "::set-output name=dir::$(npm config get cache)"
-      - uses: actions/cache@v3
+          echo "dir=$(npm config get cache)" >> $GITHUB_OUTPUT
+      - uses: actions/cache@v4
         if: runner.os != 'Windows'
         with:
           path: ${{ steps.npm-cache.outputs.dir }}
@@ -110,7 +113,7 @@ jobs:
 
       # Install python so we can create a VENV for tests
       - name: Use Python ${{env.PYTHON_VERSION}}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         id: install_python
         with:
           python-version: ${{env.PYTHON_VERSION}}
@@ -156,17 +159,18 @@ jobs:
     needs: typecheck
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Get npm cache directory
         id: npm-cache
+        shell: bash
         run: |
-          echo "::set-output name=dir::$(npm config get cache)"
-      - uses: actions/cache@v3
+          echo "dir=$(npm config get cache)" >> $GITHUB_OUTPUT
+      - uses: actions/cache@v4
         with:
           path: ${{ steps.npm-cache.outputs.dir }}
           key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}

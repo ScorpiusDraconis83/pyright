@@ -2,7 +2,7 @@
 
 # pyright: strict, reportUnknownVariableType=false
 
-from typing import Any, Collection, Generic, Literal, Sequence, TypeVar
+from typing import Any, Collection, Generic, Literal, MutableSequence, Sequence, TypeVar
 
 
 v1 = [1, 2, 3]
@@ -99,3 +99,11 @@ def func3(value: _T) -> list[_T]:
 def func4(value: _T) -> list[_T]:
     # This should generate an error.
     return [value, str(value)]
+
+
+def func5():
+    v1: Sequence[int | str] = [1]
+    reveal_type(v1, expected_text="list[int]")
+
+    v2: MutableSequence[int | str] = [1]
+    reveal_type(v2, expected_text="list[int | str]")

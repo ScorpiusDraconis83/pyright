@@ -2,7 +2,7 @@
 # and several layers of nested type aliases.
 
 from typing import Any, Callable, Concatenate, Coroutine, TypeVar, Union
-from typing_extensions import ParamSpec
+from typing_extensions import ParamSpec  # pyright: ignore[reportMissingModuleSource]
 
 T = TypeVar("T")
 U = TypeVar("U")

@@ -26,10 +26,6 @@ export class ReadOnlyAugmentedFileSystem implements FileSystem {
 
     constructor(protected realFS: FileSystem) {}
 
-    get isCaseSensitive(): boolean {
-        return this.realFS.isCaseSensitive;
-    }
-
     existsSync(uri: Uri): boolean {
         if (this.isMovedEntry(uri)) {
             // Pretend partial stub folder and its files not exist
@@ -68,8 +64,8 @@ export class ReadOnlyAugmentedFileSystem implements FileSystem {
         if (!movedEntries) {
             return entries;
         }
-
-        return entries.concat(movedEntries.map((e) => new VirtualDirent(e.name, e.isFile)));
+        const dirPath = uri.getFilePath();
+        return entries.concat(movedEntries.map((e) => new VirtualDirent(e.name, e.isFile, dirPath)));
     }
 
     readdirSync(uri: Uri): string[] {

@@ -1,43 +1,22 @@
 # This sample tests type narrowing for the "in" operator.
 
-from typing import Literal, TypedDict
+from typing import Any, Callable, Generic, Literal, ParamSpec, TypeVar, TypedDict
 import random
 
 
-def verify_str(p: str) -> None:
-    ...
+def func0(x: str | None, y: int | str):
+    if random.random() < 0.5:
+        x = None
+        y = 1
+    else:
+        x = "2"
+        y = "2"
 
+    if x in ["2"]:
+        reveal_type(x, expected_text="Literal['2']")
 
-def verify_int(p: int) -> None:
-    ...
-
-
-def verify_none(p: None) -> None:
-    ...
-
-
-x: str | None
-y: int | str
-if random.random() < 0.5:
-    x = None
-    y = 1
-else:
-    x = "2"
-    y = "2"
-
-if x in ["2"]:
-    verify_str(x)
-
-    # This should generate an error because x should
-    # be narrowed to a str.
-    verify_none(x)
-
-if y in [2]:
-    verify_int(y)
-
-    # This should generate an error because y should
-    # be narrowed to an int.
-    verify_str(y)
+    if y in [1]:
+        reveal_type(y, expected_text="Literal[1]")
 
 
 def func1(x: int | str | None, y: Literal[1, 2, "b"], b: int):
@@ -99,7 +78,7 @@ def func5(x: str | None, y: int | None, z: dict[str, str]):
 
 def func6(x: type):
     if x in (str, int, float, bool):
-        reveal_type(x, expected_text="type")
+        reveal_type(x, expected_text="type[str] | type[int] | type[float] | type[bool]")
     else:
         reveal_type(x, expected_text="type")
 
@@ -153,3 +132,47 @@ def func11(x: dict[str, str]):
         reveal_type(x, expected_text="TD1 | TD2")
     else:
         reveal_type(x, expected_text="dict[str, str]")
+
+
+T1 = TypeVar("T1", TD1, TD2)
+
+
+def func12(v: T1):
+    if "x" in v:
+        reveal_type(v, expected_text="TD1*")
+    else:
+        reveal_type(v, expected_text="TD2*")
+
+
+P = ParamSpec("P")
+
+
+class Container(Generic[P]):
+    def __init__(self, func: Callable[P, str]) -> None:
+        self.func = func
+
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> str:
+        if "data" in kwargs:
+            raise ValueError("data is not allowed in kwargs")
+
+        return self.func(*args, **kwargs)
+
+
+T13 = TypeVar("T13")
+
+
+def func13(x: type[T13]) -> type[T13]:
+    if x in (str, int, float):
+        reveal_type(x, expected_text="type[str]* | type[int]* | type[float]*")
+
+    return x
+
+
+def func14(x: str, y: dict[Any, Any]):
+    if x in y:
+        reveal_type(x, expected_text="str")
+
+
+def func15(x: Any, y: dict[str, str]):
+    if x in y:
+        reveal_type(x, expected_text="str")

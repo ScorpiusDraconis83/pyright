@@ -1,6 +1,7 @@
 # This sample tests the type checker's handling of Enum.
 
 from enum import Enum, EnumMeta, IntEnum
+from typing import Self
 
 
 TestEnum1 = Enum("TestEnum1", "   A   B, , ,C , \t D\t")
@@ -191,3 +192,100 @@ class TestEnum12(Enum):
 reveal_type(TestEnum12.a, expected_text="Literal[TestEnum12.a]")
 reveal_type(TestEnum12.b, expected_text="() -> None")
 reveal_type(TestEnum12.c, expected_text="() -> None")
+
+
+class TestEnum13(metaclass=CustomEnumMeta1):
+    pass
+
+
+TestEnum14 = TestEnum13("TestEnum14", "A, B, C")
+reveal_type(TestEnum14.A, expected_text="Literal[TestEnum14.A]")
+
+
+class TestEnum15(Enum):
+    _value_: str
+    A = 1
+    B = 2
+
+    def __init__(self, value: int):
+        self._value_ = str(value)
+
+
+te15_A = TestEnum15.A
+reveal_type(te15_A, expected_text="Literal[TestEnum15.A]")
+reveal_type(te15_A.value, expected_text="str")
+reveal_type(te15_A._value_, expected_text="str")
+
+
+class TestEnum16(IntEnum):
+    A = 1
+    B = 2
+    C = 3
+
+    D = C  # Alias for C
+
+
+reveal_type(TestEnum16.D, expected_text="Literal[TestEnum16.C]")
+reveal_type(TestEnum16.D.value, expected_text="Literal[3]")
+
+
+class TestEnum17(IntEnum):
+    def __new__(cls, val: int, doc: str) -> Self:
+        obj = int.__new__(cls, val)
+        obj._value_ = val
+        obj.__doc__ = doc
+        return obj
+
+
+class TestEnum18(TestEnum17):
+    A = (1, "A")
+    B = (2, "B")
+
+
+class TestEnum19(Enum):
+    A = 1
+    __B = 2
+
+
+reveal_type(TestEnum19.A, expected_text="Literal[TestEnum19.A]")
+reveal_type(TestEnum19.__B, expected_text="Literal[2]")
+
+
+class TestEnum20(Enum):
+    A = 1
+    B = A + 1
+
+
+reveal_type(TestEnum20.A, expected_text="Literal[TestEnum20.A]")
+reveal_type(TestEnum20.A.value, expected_text="Literal[1]")
+reveal_type(TestEnum20.B, expected_text="Literal[TestEnum20.B]")
+reveal_type(TestEnum20.B.value, expected_text="Literal[2]")
+reveal_type(TestEnum20.A.A.A, expected_text="Literal[TestEnum20.A]")
+reveal_type(TestEnum20.A.B.A, expected_text="Literal[TestEnum20.A]")
+reveal_type(TestEnum20.A.B, expected_text="Literal[TestEnum20.B]")
+
+
+class TestEnum21Base(Enum, metaclass=CustomEnumMeta1):
+    @property
+    def value(self) -> str:
+        return "test"
+
+
+class TestEnum21(TestEnum21Base):
+    A = 1
+
+
+reveal_type(TestEnum21.A.value, expected_text="str")
+
+
+class TestEnum22Base(Enum):
+    @property
+    def value(self) -> str:
+        return "test"
+
+
+class TestEnum22(TestEnum22Base):
+    A = 1
+
+
+reveal_type(TestEnum22.A.value, expected_text="str")

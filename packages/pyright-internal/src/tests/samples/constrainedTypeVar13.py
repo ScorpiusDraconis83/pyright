@@ -5,7 +5,10 @@
 # in the case where constraint is satisfied.
 
 from typing import AnyStr, Generic, ParamSpec, TypeVar
-from typing_extensions import TypeVarTuple, Unpack
+from typing_extensions import (  # pyright: ignore[reportMissingModuleSource]
+    TypeVarTuple,
+    Unpack,
+)
 
 _T1 = TypeVar("_T1", str, int)
 _T2 = TypeVar("_T2")
@@ -49,21 +52,21 @@ class Class1(Generic[_T1, _T2, _T3, _P, Unpack[_Ts]]):
             # This should generate an error.
             return [0]
 
-        if cond:
+        if cond or 3 > 2:
             if isinstance(val1, str):
                 # This should generate an error.
                 return [0]
             else:
                 return [0]
 
-        if cond:
+        if cond or 3 > 2:
             if isinstance(val3, B):
                 return [B()]
             else:
                 # This should generate an error.
                 return [C()]
 
-        if cond:
+        if cond or 3 > 2:
             if not isinstance(val3, B) and not isinstance(val3, C):
                 return [A()]
 

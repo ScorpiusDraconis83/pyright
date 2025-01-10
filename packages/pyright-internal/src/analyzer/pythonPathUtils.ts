@@ -12,7 +12,7 @@ import { compareComparableValues } from '../common/core';
 import { FileSystem } from '../common/fileSystem';
 import { Host } from '../common/host';
 import * as pathConsts from '../common/pathConsts';
-import { PythonVersion, versionToString } from '../common/pythonVersion';
+import { PythonVersion } from '../common/pythonVersion';
 import { Uri } from '../common/uri/uri';
 import { getFileSystemEntries, isDirectory, tryStat } from '../common/uri/uriUtils';
 
@@ -56,7 +56,7 @@ export function findPythonSearchPaths(
     importFailureInfo: string[],
     includeWatchPathsOnly?: boolean | undefined,
     workspaceRoot?: Uri | undefined
-): Uri[] | undefined {
+): Uri[] {
     importFailureInfo.push('Finding python search paths');
 
     if (configOptions.venvPath !== undefined && configOptions.venv) {
@@ -102,7 +102,7 @@ export function findPythonSearchPaths(
 
     // Fall back on the python interpreter.
     const pathResult = host.getPythonSearchPaths(configOptions.pythonPath, importFailureInfo);
-    if (includeWatchPathsOnly && workspaceRoot) {
+    if (includeWatchPathsOnly && workspaceRoot && !workspaceRoot.isEmpty()) {
         const paths = pathResult.paths
             .filter((p) => !p.startsWith(workspaceRoot) || p.startsWith(pathResult.prefix))
             .map((p) => fs.realCasePath(p));
@@ -156,7 +156,7 @@ function findSitePackagesPath(
     // version), prefer that over other python directories.
     if (pythonVersion) {
         const preferredDir = candidateDirs.find(
-            (dirName) => dirName.fileName === `python${versionToString(pythonVersion)}`
+            (dirName) => dirName.fileName === `python${PythonVersion.toMajorMinorString(pythonVersion)}`
         );
         if (preferredDir) {
             const dirPath = preferredDir.combinePaths(pathConsts.sitePackages);
