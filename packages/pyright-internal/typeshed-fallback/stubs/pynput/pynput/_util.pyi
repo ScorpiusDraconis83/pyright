@@ -1,10 +1,10 @@
-import sys
 import threading
+from _typeshed import OptExcInfo
 from collections.abc import Callable
 from queue import Queue
 from types import ModuleType, TracebackType
-from typing import Any, ClassVar, Generic, TypeVar
-from typing_extensions import ParamSpec, Self, TypedDict
+from typing import Any, ClassVar, Generic, TypedDict, TypeVar
+from typing_extensions import ParamSpec, Self
 
 _T = TypeVar("_T")
 _AbstractListener_T = TypeVar("_AbstractListener_T", bound=AbstractListener)
@@ -28,7 +28,7 @@ class AbstractListener(threading.Thread):
     _thread: threading.Thread  # undocumented
     _condition: threading.Condition  # undocumented
     _ready: bool  # undocumented
-    _queue: Queue[sys._OptExcInfo | None]  # undocumented
+    _queue: Queue[OptExcInfo | None]  # undocumented
     daemon: bool
     def __init__(self, suppress: bool = False, **kwargs: Callable[..., bool | None] | None) -> None: ...
     @property
@@ -47,13 +47,14 @@ class AbstractListener(threading.Thread):
     def _mark_ready(self) -> None: ...  # undocumented
     def _run(self) -> None: ...  # undocumented
     def _stop_platform(self) -> None: ...  # undocumented
-    def join(self, *args: Any) -> None: ...
+    def join(self, timeout: float | None = None, *args: Any) -> None: ...
 
 class Events(Generic[_T, _AbstractListener_T]):
     _Listener: type[_AbstractListener_T] | None  # undocumented
 
     class Event:
         def __eq__(self, other: object) -> bool: ...
+
     _event_queue: Queue[_T]  # undocumented
     _sentinel: object  # undocumented
     _listener: _AbstractListener_T  # undocumented

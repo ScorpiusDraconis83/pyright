@@ -40,7 +40,7 @@ invalidType = 3  # type: Literal[3.4]
 # is not a valid literal value.
 mismatch = 2  # type: Literal[3, 4, '5']
 
-a: Literal[3] = -(-(+++3))
+a: Literal[+3] = -(-(+++3))
 b: Literal[-2] = +-+2
 
 # This should generate an error because literals are
@@ -56,3 +56,14 @@ bytes3 = b'"'
 reveal_type(bytes3, expected_text='Literal[b"\\""]')
 bytes4 = b"'"
 reveal_type(bytes4, expected_text='Literal[b"\'"]')
+
+
+t1 = [Literal[1], Literal[2]]
+reveal_type(t1, expected_text="list[type[Literal]]")
+
+t2 = Literal[*(1, 2)]
+reveal_type(t2, expected_text="Literal")
+
+values = ("a", "b", "c")
+t3 = Literal[values]
+reveal_type(t3, expected_text="Literal")

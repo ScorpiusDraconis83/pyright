@@ -5,7 +5,11 @@
 # pyright: reportOverlappingOverload=false
 
 from __future__ import annotations
-from typing_extensions import Self, Concatenate, ParamSpec
+from typing_extensions import (  # pyright: ignore[reportMissingModuleSource]
+    Self,
+    Concatenate,
+    ParamSpec,
+)
 from typing import Any, Callable, TypeVar, Protocol, Generic, overload
 
 T = TypeVar("T")

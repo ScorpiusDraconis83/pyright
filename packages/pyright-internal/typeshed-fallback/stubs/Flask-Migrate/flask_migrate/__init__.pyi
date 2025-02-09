@@ -1,7 +1,7 @@
 # pyright: reportInvalidStubStatement=none
 
 import sys
-from _typeshed import StrPath, SupportsKeysAndGetItem, SupportsWrite
+from _typeshed import StrPath, SupportsFlush, SupportsKeysAndGetItem, SupportsWrite
 from argparse import Namespace
 from collections.abc import Callable, Iterable, Sequence
 from logging import Logger
@@ -20,9 +20,7 @@ _AlembicConfigValue: TypeAlias = Any
 alembic_version: tuple[int, int, int]
 log: Logger
 
-# TODO: Use _typeshed.SupportsFlush when it's available in type checkers.
-class _SupportsWriteAndFlush(SupportsWrite[_T_contra], Protocol):
-    def flush(self) -> object: ...
+class _SupportsWriteAndFlush(SupportsWrite[_T_contra], SupportsFlush, Protocol): ...
 
 class Config:  # should inherit from alembic.config.Config which is not possible yet
     template_directory: str | None
@@ -37,9 +35,11 @@ class Config:  # should inherit from alembic.config.Config which is not possible
         stdout: SupportsWrite[str] = sys.stdout,
         cmd_opts: Namespace | None = None,
         config_args: SupportsKeysAndGetItem[str, _AlembicConfigValue] | Iterable[tuple[str, _AlembicConfigValue]] = ...,
-        attributes: SupportsKeysAndGetItem[_AlembicConfigValue, _AlembicConfigValue]
-        | Iterable[tuple[_AlembicConfigValue, _AlembicConfigValue]]
-        | None = None,
+        attributes: (
+            SupportsKeysAndGetItem[_AlembicConfigValue, _AlembicConfigValue]
+            | Iterable[tuple[_AlembicConfigValue, _AlembicConfigValue]]
+            | None
+        ) = None,
         *,
         template_directory: str | None = None,
     ) -> None: ...
@@ -130,5 +130,7 @@ def history(
 def heads(directory: str | None = None, verbose: bool = False, resolve_dependencies: bool = False) -> None: ...
 def branches(directory: str | None = None, verbose: bool = False) -> None: ...
 def current(directory: str | None = None, verbose: bool = False) -> None: ...
-def stamp(directory: str | None = None, revision: str = "head", sql: bool = False, tag: str | None = None) -> None: ...
+def stamp(
+    directory: str | None = None, revision: str = "head", sql: bool = False, tag: str | None = None, purge: bool = False
+) -> None: ...
 def check(directory: str | None = None) -> None: ...

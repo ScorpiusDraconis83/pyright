@@ -2,7 +2,10 @@
 # type alias with a Callable.
 
 from typing import Any, Callable, Generic, Protocol
-from typing_extensions import Concatenate, ParamSpec
+from typing_extensions import (  # pyright: ignore[reportMissingModuleSource]
+    Concatenate,
+    ParamSpec,
+)
 
 P = ParamSpec("P")
 

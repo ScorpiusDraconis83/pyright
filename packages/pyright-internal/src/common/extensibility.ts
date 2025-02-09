@@ -16,19 +16,21 @@ import { SourceMapper } from '../analyzer/sourceMapper';
 import { SymbolTable } from '../analyzer/symbol';
 import { TypeEvaluator } from '../analyzer/typeEvaluatorTypes';
 import { Diagnostic } from '../common/diagnostic';
-import { ServerSettings } from '../languageServerBase';
+import { ServerSettings } from '../common/languageServerInterface';
 import { ParseNode } from '../parser/parseNodes';
-import { ParseResults } from '../parser/parser';
+import { ParseFileResults, ParserOutput } from '../parser/parser';
 import { ConfigOptions } from './configOptions';
 import { ConsoleInterface } from './console';
 import { ReadOnlyFileSystem } from './fileSystem';
-import { GroupServiceKey, ServiceKey } from './serviceProvider';
+import { ServiceProvider } from './serviceProvider';
 import { Range } from './textRange';
 import { Uri } from './uri/uri';
 
 export interface SourceFile {
     // See whether we can convert these to regular properties.
     isStubFile(): boolean;
+    isTypingStubFile(): boolean;
+
     isThirdPartyPyTypedPresent(): boolean;
 
     getIPythonMode(): IPythonMode;
@@ -37,6 +39,7 @@ export interface SourceFile {
     getClientVersion(): number | undefined;
     getOpenFileContents(): string | undefined;
     getModuleSymbolTable(): SymbolTable | undefined;
+    getDiagnostics(options: ConfigOptions): Diagnostic[] | undefined;
 }
 
 export interface SourceFileInfo {
@@ -62,14 +65,6 @@ export interface SourceFileInfo {
     readonly shadowedBy: readonly SourceFileInfo[];
 }
 
-export interface ServiceProvider {
-    tryGet<T>(key: ServiceKey<T>): T | undefined;
-    tryGet<T>(key: GroupServiceKey<T>): readonly T[] | undefined;
-
-    get<T>(key: ServiceKey<T>): T;
-    get<T>(key: GroupServiceKey<T>): readonly T[];
-}
-
 // Readonly wrapper around a Program. Makes sure it doesn't mutate the program.
 export interface ProgramView {
     readonly id: string;
@@ -83,7 +78,8 @@ export interface ProgramView {
 
     owns(uri: Uri): boolean;
     getSourceFileInfoList(): readonly SourceFileInfo[];
-    getParseResults(fileUri: Uri): ParseResults | undefined;
+    getParserOutput(fileUri: Uri): ParserOutput | undefined;
+    getParseResults(fileUri: Uri): ParseFileResults | undefined;
     getSourceFileInfo(fileUri: Uri): SourceFileInfo | undefined;
     getChainedUri(fileUri: Uri): Uri | undefined;
     getSourceMapper(fileUri: Uri, token: CancellationToken, mapCompiled?: boolean, preferStubs?: boolean): SourceMapper;
@@ -109,22 +105,15 @@ export interface EditableProgram extends ProgramView {
 // Mutable wrapper around a program. Allows the FG thread to forward this request to the BG thread
 // Any edits made to this program will persist and mutate the program's state permanently.
 export interface ProgramMutator {
-    addInterimFile(file: string): void;
+    addInterimFile(fileUri: Uri): void;
     setFileOpened(
         fileUri: Uri,
         version: number | null,
         contents: string,
         ipythonMode: IPythonMode,
-        chainedFilePath?: string,
-        realFilePath?: string
+        chainedFilePath?: Uri
     ): void;
-    updateOpenFileContents(
-        path: string,
-        version: number | null,
-        contents: string,
-        ipythonMode: IPythonMode,
-        realFilePath?: string
-    ): void;
+    updateOpenFileContents(path: Uri, version: number | null, contents: string, ipythonMode: IPythonMode): void;
 }
 
 export enum ReferenceUseCase {
@@ -157,9 +146,9 @@ export interface SymbolUsageProvider {
 }
 
 export interface StatusMutationListener {
-    fileDirty?: (fileUri: Uri) => void;
-    clearCache?: () => void;
-    updateSettings?: <T extends ServerSettings>(settings: T) => void;
+    onFileDirty?: (fileUri: Uri) => void;
+    onClearCache?: () => void;
+    onUpdateSettings?: <T extends ServerSettings>(settings: T) => void;
 }
 
 export interface DebugInfoInspector {

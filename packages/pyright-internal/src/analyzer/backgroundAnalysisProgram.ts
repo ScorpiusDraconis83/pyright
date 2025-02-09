@@ -51,6 +51,11 @@ export class BackgroundAnalysisProgram {
             this._disableChecker,
             serviceId
         );
+        this._backgroundAnalysis?.setProgramView(this._program);
+    }
+
+    get serviceProvider() {
+        return this._serviceProvider;
     }
 
     get configOptions() {
@@ -150,7 +155,7 @@ export class BackgroundAnalysisProgram {
 
     startAnalysis(token: CancellationToken): boolean {
         if (this._backgroundAnalysis) {
-            this._backgroundAnalysis.startAnalysis(this, token);
+            this._backgroundAnalysis.startAnalysis(token);
             return false;
         }
 
@@ -172,8 +177,8 @@ export class BackgroundAnalysisProgram {
         return this._program.analyzeFile(fileUri, token);
     }
 
-    libraryUpdated() {
-        // empty
+    libraryUpdated(): boolean {
+        return false;
     }
 
     async getDiagnosticsForRange(fileUri: Uri, range: Range, token: CancellationToken): Promise<Diagnostic[]> {
@@ -228,6 +233,7 @@ export class BackgroundAnalysisProgram {
         this._disposed = true;
         this._program.dispose();
         this._backgroundAnalysis?.shutdown();
+        this._backgroundAnalysis?.dispose();
     }
 
     enterEditMode() {
@@ -262,11 +268,12 @@ export class BackgroundAnalysisProgram {
             this._onAnalysisCompletion({
                 diagnostics: fileDiags,
                 filesInProgram: this._program.getFileCount(),
-                filesRequiringAnalysis: this._program.getFilesToAnalyzeCount(),
+                requiringAnalysisCount: this._program.getFilesToAnalyzeCount(),
                 checkingOnlyOpenFiles: this._program.isCheckingOnlyOpenFiles(),
                 fatalErrorOccurred: false,
                 configParseErrorOccurred: false,
                 elapsedTime: 0,
+                reason: 'tracking',
             });
         }
     }

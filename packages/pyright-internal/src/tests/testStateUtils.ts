@@ -34,7 +34,7 @@ export function convertFileEditActionToString(edit: FileEditAction): string {
 export function convertRangeToFileEditAction(state: TestState, range: Range, replacementText?: string): FileEditAction {
     const data = range.marker?.data as { r: string } | undefined;
     return {
-        fileUri: Uri.file(range.fileName),
+        fileUri: range.fileUri,
         replacementText: (replacementText ?? data?.r ?? 'N/A').replace(/!n!/g, '\n'),
         range: state.convertPositionRange(range),
     };
@@ -51,7 +51,7 @@ export function verifyEdits(
         assert(
             expected.some((a) => {
                 return (
-                    a.fileUri === edit.fileUri &&
+                    a.fileUri.equals(edit.fileUri) &&
                     rangesAreEqual(a.range, edit.range) &&
                     a.replacementText === edit.replacementText
                 );
@@ -70,7 +70,7 @@ export function applyFileEditActions(state: TestState, fileEditActions: FileEdit
 
     for (const [editFileName, editsPerFile] of editsPerFileMap) {
         const result = _applyEdits(state, editFileName, editsPerFile);
-        state.testFS.writeFileSync(Uri.file(editFileName), result.text, 'utf8');
+        state.testFS.writeFileSync(Uri.file(editFileName, state.serviceProvider), result.text, 'utf8');
 
         // Update open file content if the file is in opened state.
         if (result.version) {
@@ -83,7 +83,11 @@ export function applyFileEditActions(state: TestState, fileEditActions: FileEdit
                 state.program.setFileClosed(renamed.oldFileUri);
             }
 
-            state.program.setFileOpened(Uri.file(openedFilePath), result.version + 1, result.text);
+            state.program.setFileOpened(
+                Uri.file(openedFilePath, state.serviceProvider),
+                result.version + 1,
+                result.text
+            );
         }
     }
 
@@ -128,7 +132,7 @@ export function applyFileEditActions(state: TestState, fileEditActions: FileEdit
 }
 
 function _applyEdits(state: TestState, filePath: string, edits: FileEditAction[]) {
-    const sourceFile = state.program.getBoundSourceFile(Uri.file(filePath))!;
+    const sourceFile = state.program.getBoundSourceFile(Uri.file(filePath, state.serviceProvider))!;
     const parseResults = sourceFile.getParseResults()!;
 
     const current = applyTextEditsToString(
@@ -148,10 +152,10 @@ export function verifyReferencesAtPosition(
     position: number,
     ranges: Range[]
 ) {
-    const sourceFile = program.getBoundSourceFile(Uri.file(fileName));
+    const sourceFile = program.getBoundSourceFile(Uri.file(fileName, program.serviceProvider));
     assert(sourceFile);
 
-    const node = findNodeByOffset(sourceFile.getParseResults()!.parseTree, position);
+    const node = findNodeByOffset(sourceFile.getParseResults()!.parserOutput.parseTree, position);
     const decls = DocumentSymbolCollector.getDeclarationsForNode(
         program,
         node as NameNode,
@@ -165,7 +169,9 @@ export function verifyReferencesAtPosition(
             program,
             isArray(symbolNames) ? symbolNames : [symbolNames],
             decls,
-            program.getBoundSourceFile(Uri.file(rangeFileName))!.getParseResults()!.parseTree,
+            program
+                .getBoundSourceFile(Uri.file(rangeFileName, program.serviceProvider))!
+                .getParseResults()!.parserOutput.parseTree,
             CancellationToken.None,
             {
                 treatModuleInImportAndFromImportSame: true,

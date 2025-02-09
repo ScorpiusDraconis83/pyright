@@ -170,10 +170,10 @@ export const enum StringTokenFlags {
     // Other conditions
     ReplacementFieldStart = 1 << 7,
     ReplacementFieldEnd = 1 << 8,
+    NamedUnicodeEscape = 1 << 9,
 
     // Error conditions
     Unterminated = 1 << 16,
-    ExceedsMaxSize = 1 << 17,
 }
 
 export const enum CommentType {
@@ -304,11 +304,11 @@ export namespace NewLineToken {
 
 export interface KeywordToken extends Token {
     readonly type: TokenType.Keyword;
-    readonly keywordType: number;
+    readonly keywordType: KeywordType;
 }
 
 export namespace KeywordToken {
-    export function create(start: number, length: number, keywordType: number, comments: Comment[] | undefined) {
+    export function create(start: number, length: number, keywordType: KeywordType, comments: Comment[] | undefined) {
         const token: KeywordToken = {
             start,
             length,
@@ -318,6 +318,10 @@ export namespace KeywordToken {
         };
 
         return token;
+    }
+
+    export function isSoftKeyword(token: KeywordToken) {
+        return softKeywords.some((t) => token.keywordType === t);
     }
 }
 

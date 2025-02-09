@@ -19,6 +19,7 @@ import { normalizeSlashes } from '../common/pathUtils';
 import { convertOffsetsToRange, convertOffsetToPosition } from '../common/positionUtils';
 import { ServiceProvider } from '../common/serviceProvider';
 import { Uri } from '../common/uri/uri';
+import { UriEx } from '../common/uri/uriUtils';
 import { CompletionProvider } from '../languageService/completionProvider';
 import { parseTestData } from './harness/fourslash/fourSlashParser';
 import { TestAccessHost } from './harness/testAccessHost';
@@ -41,16 +42,15 @@ test('check chained files', () => {
 //// [|foo/*marker*/|]
     `;
 
-    const basePath = Uri.file(normalizeSlashes('/'));
+    const basePath = UriEx.file(normalizeSlashes('/'));
     const { data, service } = createServiceWithChainedSourceFiles(basePath, code);
 
     const marker = data.markerPositions.get('marker')!;
-    const markerUri = Uri.file(marker.fileName);
+    const markerUri = marker.fileUri;
 
-    const parseResult = service.getParseResult(markerUri)!;
+    const parseResult = service.getParseResults(markerUri)!;
     const result = new CompletionProvider(
         service.test_program,
-        basePath,
         markerUri,
         convertOffsetToPosition(marker.position, parseResult.tokenizerOutput.lines),
         {
@@ -82,23 +82,22 @@ test('modify chained files', () => {
 //// [|foo/*marker*/|]
     `;
 
-    const basePath = Uri.file(normalizeSlashes('/'));
+    const basePath = UriEx.file(normalizeSlashes('/'));
     const { data, service } = createServiceWithChainedSourceFiles(basePath, code);
 
     // Make sure files are all realized.
     const marker = data.markerPositions.get('marker')!;
-    const markerUri = Uri.file(marker.fileName);
-    const parseResult = service.getParseResult(markerUri)!;
+    const markerUri = marker.fileUri;
+    const parseResult = service.getParseResults(markerUri)!;
 
     // Close file in the middle of the chain
-    service.setFileClosed(Uri.file(data.markerPositions.get('delete')!.fileName));
+    service.setFileClosed(data.markerPositions.get('delete')!.fileUri);
 
     // Make sure we don't get suggestion from auto import but from chained files.
     service.test_program.configOptions.autoImportCompletions = false;
 
     const result = new CompletionProvider(
         service.test_program,
-        basePath,
         markerUri,
         convertOffsetToPosition(marker.position, parseResult.tokenizerOutput.lines),
         {
@@ -132,14 +131,14 @@ test('modify chained files', async () => {
 //// [|/*marker*/foo1()|]
     `;
 
-    const basePath = Uri.file(normalizeSlashes('/'));
+    const basePath = UriEx.file(normalizeSlashes('/'));
     const { data, service } = createServiceWithChainedSourceFiles(basePath, code);
 
     const marker = data.markerPositions.get('marker')!;
-    const markerUri = Uri.file(marker.fileName);
+    const markerUri = marker.fileUri;
     const range = data.ranges.find((r) => r.marker === marker)!;
 
-    const parseResults = service.getParseResult(markerUri)!;
+    const parseResults = service.getParseResults(markerUri)!;
     analyze(service.test_program);
 
     // Initially, there should be no error.
@@ -152,7 +151,7 @@ test('modify chained files', async () => {
     assert.strictEqual(initialDiags.length, 0);
 
     // Change test1 content
-    service.updateOpenFileContents(Uri.file(data.markerPositions.get('changed')!.fileName), 2, 'def foo5(): pass');
+    service.updateOpenFileContents(data.markerPositions.get('changed')!.fileUri, 2, 'def foo5(): pass');
     analyze(service.test_program);
 
     const finalDiags = await service.getDiagnosticsForRange(
@@ -182,13 +181,13 @@ test('chained files with 1000s of files', async () => {
 //// [|/*marker*/foo1()|]
     `;
     const code = generateChainedFiles(1000, lastFile);
-    const basePath = Uri.file(normalizeSlashes('/'));
+    const basePath = UriEx.file(normalizeSlashes('/'));
     const { data, service } = createServiceWithChainedSourceFiles(basePath, code);
     const marker = data.markerPositions.get('marker')!;
-    const markerUri = Uri.file(marker.fileName);
+    const markerUri = marker.fileUri;
     const range = data.ranges.find((r) => r.marker === marker)!;
 
-    const parseResults = service.getParseResult(markerUri)!;
+    const parseResults = service.getParseResults(markerUri)!;
     analyze(service.test_program);
 
     // There should be no error as it should find the foo1 in the first chained file.
@@ -210,15 +209,15 @@ test('imported by files', async () => {
 //// os.path.join()
     `;
 
-    const basePath = Uri.file(normalizeSlashes('/'));
+    const basePath = UriEx.file(normalizeSlashes('/'));
     const { data, service } = createServiceWithChainedSourceFiles(basePath, code);
     analyze(service.test_program);
 
     const marker = data.markerPositions.get('marker')!;
-    const markerUri = Uri.file(marker.fileName);
+    const markerUri = marker.fileUri;
     const range = data.ranges.find((r) => r.marker === marker)!;
 
-    const parseResults = service.getParseResult(markerUri)!;
+    const parseResults = service.getParseResults(markerUri)!;
     const diagnostics = await service.getDiagnosticsForRange(
         markerUri,
         convertOffsetsToRange(range.pos, range.end, parseResults.tokenizerOutput.lines),
@@ -237,22 +236,22 @@ test('re ordering cells', async () => {
 //// /*bottom*/os.path.join()
     `;
 
-    const basePath = Uri.file(normalizeSlashes('/'));
+    const basePath = UriEx.file(normalizeSlashes('/'));
     const { data, service } = createServiceWithChainedSourceFiles(basePath, code);
     analyze(service.test_program);
 
     const marker = data.markerPositions.get('marker')!;
-    const markerUri = Uri.file(marker.fileName);
+    const markerUri = marker.fileUri;
     const range = data.ranges.find((r) => r.marker === marker)!;
 
     const bottom = data.markerPositions.get('bottom')!;
-    const bottomUri = Uri.file(bottom.fileName);
+    const bottomUri = bottom.fileUri;
 
     service.updateChainedUri(bottomUri, undefined);
     service.updateChainedUri(markerUri, bottomUri);
     analyze(service.test_program);
 
-    const parseResults = service.getParseResult(markerUri)!;
+    const parseResults = service.getParseResults(markerUri)!;
     const diagnostics = await service.getDiagnosticsForRange(
         markerUri,
         convertOffsetsToRange(range.pos, range.end, parseResults.tokenizerOutput.lines),
@@ -266,7 +265,7 @@ function createServiceWithChainedSourceFiles(basePath: Uri, code: string) {
     const fs = createFromFileSystem(host.HOST, /*ignoreCase*/ false, { cwd: basePath.getFilePath() });
     const service = new AnalyzerService('test service', new ServiceProvider(), {
         console: new NullConsole(),
-        hostFactory: () => new TestAccessHost(Uri.file(vfs.MODULE_PATH), [libFolder, distlibFolder]),
+        hostFactory: () => new TestAccessHost(UriEx.file(vfs.MODULE_PATH), [libFolder, distlibFolder]),
         importResolverFactory: AnalyzerService.createImportResolver,
         configOptions: new ConfigOptions(basePath),
         fileSystem: fs,
@@ -276,7 +275,7 @@ function createServiceWithChainedSourceFiles(basePath: Uri, code: string) {
 
     let chainedFilePath: Uri | undefined;
     for (const file of data.files) {
-        const uri = Uri.file(file.fileName);
+        const uri = file.fileUri;
         service.setFileOpened(uri, 1, file.content, IPythonMode.CellDocs, chainedFilePath);
         chainedFilePath = uri;
     }

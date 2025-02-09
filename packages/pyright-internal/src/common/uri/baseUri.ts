@@ -7,8 +7,11 @@
  */
 
 import { some } from '../collectionUtils';
-import { getShortenedFileName, normalizeSlashes } from '../pathUtils';
+import { getRootLength, getShortenedFileName } from '../pathUtils';
 import { Uri } from './uri';
+import { cacheProperty } from './memoization';
+
+export type JsonObjType = any;
 
 export abstract class BaseUri implements Uri {
     protected constructor(private readonly _key: string) {}
@@ -28,7 +31,7 @@ export abstract class BaseUri implements Uri {
     abstract get fileName(): string;
 
     // Returns just the fileName without any extensions
-    get fileNameWithoutExtension(): string {
+    get fileNameWithoutExtensions(): string {
         const fileName = this.fileName;
         const index = fileName.lastIndexOf('.');
         if (index > 0) {
@@ -45,34 +48,42 @@ export abstract class BaseUri implements Uri {
     abstract get root(): Uri;
 
     // Returns a URI where the path contains the path with .py appended.
+    @cacheProperty()
     get packageUri(): Uri {
         // This is assuming that the current path is a file already.
         return this.addExtension('.py');
     }
 
     // Returns a URI where the path contains the path with .pyi appended.
+    @cacheProperty()
     get packageStubUri(): Uri {
         // This is assuming that the current path is a file already.
         return this.addExtension('.pyi');
     }
 
     // Returns a URI where the path has __init__.py appended.
+    @cacheProperty()
     get initPyUri(): Uri {
         // This is assuming that the current path is a directory already.
-        return this.combinePaths('__init__.py');
+        return this.combinePathsUnsafe('__init__.py');
     }
 
     // Returns a URI where the path has __init__.pyi appended.
+    @cacheProperty()
     get initPyiUri(): Uri {
         // This is assuming that the current path is a directory already.
-        return this.combinePaths('__init__.pyi');
+        return this.combinePathsUnsafe('__init__.pyi');
     }
 
     // Returns a URI where the path has py.typed appended.
+    @cacheProperty()
     get pytypedUri(): Uri {
         // This is assuming that the current path is a directory already.
-        return this.combinePaths('py.typed');
+        return this.combinePathsUnsafe('py.typed');
     }
+
+    abstract get fragment(): string;
+    abstract get query(): string;
 
     isEmpty(): boolean {
         return false;
@@ -82,13 +93,15 @@ export abstract class BaseUri implements Uri {
 
     abstract toUserVisibleString(): string;
 
+    abstract toJsonObj(): JsonObjType;
+
     abstract matchesRegex(regex: RegExp): boolean;
 
     replaceExtension(ext: string): Uri {
         const dir = this.getDirectory();
         const base = this.fileName;
         const newBase = base.slice(0, base.length - this.lastExtension.length) + ext;
-        return dir.combinePaths(newBase);
+        return dir.combinePathsUnsafe(newBase);
     }
 
     addExtension(ext: string): Uri {
@@ -100,6 +113,16 @@ export abstract class BaseUri implements Uri {
             ? this.lastExtension === ext
             : this.lastExtension.toLowerCase() === ext.toLowerCase();
     }
+
+    containsExtension(ext: string): boolean {
+        const fileName = this.fileName;
+        // Use a regex so we keep the . on the front of the extension.
+        const extensions = fileName.split(/(?=\.)/g);
+        return extensions.some((e) => (this.isCaseSensitive ? e === ext : e.toLowerCase() === ext.toLowerCase()));
+    }
+
+    abstract withFragment(fragment: string): Uri;
+    abstract withQuery(query: string): Uri;
 
     abstract addPath(extra: string): Uri;
 
@@ -129,28 +152,31 @@ export abstract class BaseUri implements Uri {
     abstract startsWith(other: Uri | undefined, ignoreCase?: boolean): boolean;
 
     pathStartsWith(name: string): boolean {
-        // ignore path separators.
-        name = normalizeSlashes(name);
+        // We're making an assumption here that the name is already normalized.
         return this.getComparablePath().startsWith(name);
     }
 
     pathEndsWith(name: string): boolean {
-        // ignore path separators.
-        name = normalizeSlashes(name);
+        // We're making an assumption here that the name is already normalized.
         return this.getComparablePath().endsWith(name);
     }
 
     pathIncludes(include: string): boolean {
-        // ignore path separators.
-        include = normalizeSlashes(include);
+        // We're making an assumption here that the name is already normalized.
         return this.getComparablePath().includes(include);
     }
 
     // How long the path for this Uri is.
     abstract getPathLength(): number;
 
+    // Resolves paths to create a new Uri. Any '..' or '.' path components will be normalized.
+    abstract resolvePaths(...paths: string[]): Uri;
+
     // Combines paths to create a new Uri. Any '..' or '.' path components will be normalized.
     abstract combinePaths(...paths: string[]): Uri;
+
+    // Combines paths to create a new Uri. Any '..' or '.' path components will NOT be normalized.
+    abstract combinePathsUnsafe(...paths: string[]): Uri;
 
     getRelativePath(child: Uri): string | undefined {
         if (this.scheme !== child.scheme) {
@@ -185,7 +211,12 @@ export abstract class BaseUri implements Uri {
         for (start = 0; start < fromComponents.length && start < toComponents.length; start++) {
             const fromComponent = fromComponents[start];
             const toComponent = toComponents[start];
-            if (fromComponent !== toComponent) {
+
+            const match = this.isCaseSensitive
+                ? fromComponent === toComponent
+                : fromComponent.toLowerCase() === toComponent.toLowerCase();
+
+            if (!match) {
                 break;
             }
         }
@@ -206,33 +237,37 @@ export abstract class BaseUri implements Uri {
         return getShortenedFileName(this.getPath(), maxDirLength);
     }
 
-    stripExtension(): Uri {
-        const base = this.fileName;
-        const index = base.lastIndexOf('.');
-        if (index > 0) {
-            const stripped = base.slice(0, index);
-            return this.getDirectory().combinePaths(stripped);
-        } else {
-            return this;
-        }
-    }
+    abstract stripExtension(): Uri;
 
-    stripAllExtensions(): Uri {
-        const base = this.fileName;
-        const stripped = base.split('.')[0];
-        if (stripped === base) {
-            return this;
-        } else {
-            return this.getDirectory().combinePaths(stripped);
-        }
-    }
+    abstract stripAllExtensions(): Uri;
 
     protected abstract getRootPath(): string;
 
     protected normalizeSlashes(path: string): string {
-        return path.replace(/\\/g, '/');
+        if (path.includes('\\')) {
+            return path.replace(/\\/g, '/');
+        }
+        return path;
     }
 
+    protected static combinePathElements(pathString: string, separator: string, ...paths: (string | undefined)[]) {
+        // Borrowed this algorithm from the pathUtils combinePaths function. This is
+        // a quicker implementation that's possible because we assume all paths are normalized already.
+        for (const relativePath of paths) {
+            if (!relativePath) {
+                continue;
+            }
+            if (!pathString || getRootLength(relativePath) !== 0) {
+                pathString = relativePath;
+            } else if (pathString.endsWith(separator)) {
+                pathString += relativePath;
+            } else {
+                pathString += separator + relativePath;
+            }
+        }
+
+        return pathString;
+    }
     protected reducePathComponents(components: string[]): string[] {
         if (!some(components)) {
             return [];

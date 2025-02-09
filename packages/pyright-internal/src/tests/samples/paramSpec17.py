@@ -5,7 +5,7 @@
 
 from collections.abc import Callable
 from typing import Any
-from typing_extensions import ParamSpec
+from typing_extensions import ParamSpec  # pyright: ignore[reportMissingModuleSource]
 
 P = ParamSpec("P")
 

@@ -2,7 +2,10 @@
 # of several overloads but not in others.
 
 from typing import Callable, Concatenate, overload, Any
-from typing_extensions import ParamSpec, Self
+from typing_extensions import (  # pyright: ignore[reportMissingModuleSource]
+    ParamSpec,
+    Self,
+)
 
 P = ParamSpec("P")
 

@@ -14,7 +14,7 @@ import {
 } from '../../../analyzer/backgroundAnalysisProgram';
 import { ImportResolver, ImportResolverFactory } from '../../../analyzer/importResolver';
 import { MaxAnalysisTime } from '../../../analyzer/program';
-import { AnalyzerService } from '../../../analyzer/service';
+import { AnalyzerService, AnalyzerServiceOptions } from '../../../analyzer/service';
 import { BackgroundAnalysisBase } from '../../../backgroundAnalysisBase';
 import { CommandController } from '../../../commands/commandController';
 import { ConfigOptions } from '../../../common/configOptions';
@@ -24,14 +24,14 @@ import { FileSystem } from '../../../common/fileSystem';
 import { ServiceProvider } from '../../../common/serviceProvider';
 import { Range } from '../../../common/textRange';
 import { Uri } from '../../../common/uri/uri';
-import { LanguageServerInterface, MessageAction, ServerSettings, WindowInterface } from '../../../languageServerBase';
-import { CodeActionProvider } from '../../../languageService/codeActionProvider';
 import {
-    WellKnownWorkspaceKinds,
-    Workspace,
-    WorkspacePythonPathKind,
-    createInitStatus,
-} from '../../../workspaceFactory';
+    LanguageServerInterface,
+    MessageAction,
+    ServerSettings,
+    WindowInterface,
+} from '../../../common/languageServerInterface';
+import { CodeActionProvider } from '../../../languageService/codeActionProvider';
+import { WellKnownWorkspaceKinds, Workspace, createInitStatus } from '../../../workspaceFactory';
 import { TestAccessHost } from '../testAccessHost';
 import { HostSpecificFeatures } from './testState';
 
@@ -55,10 +55,6 @@ export class TestFeatures implements HostSpecificFeatures {
             /* disableChecker */ undefined
         );
 
-    runIndexer(workspace: Workspace, noStdLib: boolean, options?: string): void {
-        /* empty */
-    }
-
     getCodeActionsForPosition(
         workspace: Workspace,
         fileUri: Uri,
@@ -74,34 +70,43 @@ export class TestFeatures implements HostSpecificFeatures {
 }
 
 export class TestLanguageService implements LanguageServerInterface {
-    readonly rootUri = Uri.file('/');
     readonly window = new TestWindow();
     readonly supportAdvancedEdits = true;
+    readonly serviceProvider: ServiceProvider;
 
     private readonly _workspace: Workspace;
     private readonly _defaultWorkspace: Workspace;
 
-    constructor(workspace: Workspace, readonly console: ConsoleInterface, readonly fs: FileSystem) {
+    constructor(
+        workspace: Workspace,
+        readonly console: ConsoleInterface,
+        readonly fs: FileSystem,
+        options?: AnalyzerServiceOptions
+    ) {
         this._workspace = workspace;
+        this.serviceProvider = this._workspace.service.serviceProvider;
+
         this._defaultWorkspace = {
             workspaceName: '',
-            rootUri: Uri.empty(),
-            pythonPath: undefined,
-            pythonPathKind: WorkspacePythonPathKind.Mutable,
+            rootUri: undefined,
             kinds: [WellKnownWorkspaceKinds.Test],
-            service: new AnalyzerService('test service', new ServiceProvider(), {
-                console: this.console,
-                hostFactory: () => new TestAccessHost(),
-                importResolverFactory: AnalyzerService.createImportResolver,
-                configOptions: new ConfigOptions(Uri.empty()),
-                fileSystem: this.fs,
-            }),
+            service: new AnalyzerService(
+                'test service',
+                new ServiceProvider(),
+                options ?? {
+                    console: this.console,
+                    hostFactory: () => new TestAccessHost(),
+                    importResolverFactory: AnalyzerService.createImportResolver,
+                    configOptions: new ConfigOptions(Uri.empty()),
+                    fileSystem: this.fs,
+                }
+            ),
             disableLanguageServices: false,
+            disableTaggedHints: false,
             disableOrganizeImports: false,
             disableWorkspaceSymbol: false,
             isInitialized: createInitStatus(),
             searchPathsToWatch: [],
-            pythonEnvironmentName: undefined,
         };
     }
 
@@ -125,6 +130,7 @@ export class TestLanguageService implements LanguageServerInterface {
             openFilesOnly: this._workspace.service.getConfigOptions().checkOnlyOpenFiles,
             useLibraryCodeForTypes: this._workspace.service.getConfigOptions().useLibraryCodeForTypes,
             disableLanguageServices: this._workspace.disableLanguageServices,
+            disableTaggedHints: this._workspace.disableTaggedHints,
             autoImportCompletions: this._workspace.service.getConfigOptions().autoImportCompletions,
             functionSignatureDisplay: this._workspace.service.getConfigOptions().functionSignatureDisplay,
         };

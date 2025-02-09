@@ -3,7 +3,10 @@
 # uses a ParamSpec.
 
 from typing import Callable, Generic, TypeVar
-from typing_extensions import Concatenate, ParamSpec
+from typing_extensions import (  # pyright: ignore[reportMissingModuleSource]
+    Concatenate,
+    ParamSpec,
+)
 
 P = ParamSpec("P")
 R = TypeVar("R")

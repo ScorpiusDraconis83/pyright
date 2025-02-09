@@ -34,3 +34,12 @@ def func3(x: list[str]):
 def func4(x: set[str]):
     y = x or []
     reveal_type(y, expected_text="set[str] | list[Any]")
+
+
+def identity(v: _T) -> _T:
+    return v
+
+
+def func5(x: int):
+    v = x and identity("")
+    reveal_type(v, expected_text="str | Literal[0]")

@@ -1,8 +1,8 @@
 from _typeshed import ConvertibleToInt, Incomplete, Unused
 from array import array
 from collections.abc import Iterable, MutableSequence
-from typing import ClassVar, Generic, TypeVar
-from typing_extensions import Literal, Self
+from typing import ClassVar, Generic, Literal, TypeVar
+from typing_extensions import Self
 
 from openpyxl.descriptors.base import Bool, Integer, Typed, _ConvertibleToBool
 from openpyxl.descriptors.excel import ExtensionList
@@ -31,7 +31,7 @@ class StyleArray(array[int]):
     xfId: ArrayDescriptor[int]
     def __new__(cls, args: bytes | bytearray | Iterable[int] = [0, 0, 0, 0, 0, 0, 0, 0, 0]) -> Self: ...
     def __init__(self, args: bytes | bytearray | Iterable[int] = [0, 0, 0, 0, 0, 0, 0, 0, 0]) -> None: ...
-    def __hash__(self) -> int: ...
+    def __hash__(self) -> int: ...  # type: ignore[override]
     def __copy__(self) -> StyleArray: ...
     def __deepcopy__(self, memo: Unused) -> StyleArray: ...
 

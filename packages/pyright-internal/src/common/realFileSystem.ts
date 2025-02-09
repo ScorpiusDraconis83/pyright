@@ -10,7 +10,9 @@ import * as fs from 'fs';
 import * as tmp from 'tmp';
 import { isMainThread } from 'worker_threads';
 
+import { CaseSensitivityDetector } from './caseSensitivityDetector';
 import { ConsoleInterface, NullConsole } from './console';
+import { randomBytesHex } from './crypto';
 import { FileSystem, MkDirOptions, TempFile, TmpfileOptions } from './fileSystem';
 import {
     FileWatcher,
@@ -20,9 +22,10 @@ import {
     FileWatcherProvider,
     nullFileWatcherProvider,
 } from './fileWatcher';
-import { getRootLength } from './pathUtils';
+import { combinePaths, getRootLength } from './pathUtils';
+import { FileUri, FileUriSchema } from './uri/fileUri';
 import { Uri } from './uri/uri';
-import { getRootUri, isFileSystemCaseSensitive } from './uri/uriUtils';
+import { getRootUri } from './uri/uriUtils';
 
 // Automatically remove files created by tmp at process exit.
 tmp.setGracefulCleanup();
@@ -30,11 +33,15 @@ tmp.setGracefulCleanup();
 // Callers can specify a different file watcher provider if desired.
 // By default, we'll use the file watcher based on chokidar.
 export function createFromRealFileSystem(
+    caseSensitiveDetector: CaseSensitivityDetector,
     console?: ConsoleInterface,
     fileWatcherProvider?: FileWatcherProvider
 ): FileSystem {
-    console = console ?? new NullConsole();
-    return new RealFileSystem(fileWatcherProvider ?? nullFileWatcherProvider, console);
+    return new RealFileSystem(
+        caseSensitiveDetector,
+        console ?? new NullConsole(),
+        fileWatcherProvider ?? nullFileWatcherProvider
+    );
 }
 
 const DOT_ZIP = `.zip`;
@@ -208,17 +215,19 @@ class YarnFS extends PosixFS {
 
 const yarnFS = new YarnFS();
 
-class RealFileSystem implements FileSystem {
-    private _isCaseSensitive = true;
-    constructor(private _fileWatcherProvider: FileWatcherProvider, private _console: ConsoleInterface) {
-        this._isCaseSensitive = isFileSystemCaseSensitive(this, new RealTempFile(/* isCaseSensitive */ true));
+// Use `createFromRealFileSystem` instead of `new RealFileSystem`
+// unless you are creating a new file system that inherits from `RealFileSystem`
+export class RealFileSystem implements FileSystem {
+    constructor(
+        private readonly _caseSensitiveDetector: CaseSensitivityDetector,
+        private readonly _console: ConsoleInterface,
+        private readonly _fileWatcherProvider: FileWatcherProvider
+    ) {
+        // Empty
     }
 
-    get isCaseSensitive(): boolean {
-        return this._isCaseSensitive;
-    }
     existsSync(uri: Uri) {
-        if (uri.isEmpty()) {
+        if (uri.isEmpty() || !FileUri.isFileUri(uri)) {
             return false;
         }
         const path = uri.getFilePath();
@@ -258,6 +267,8 @@ class RealFileSystem implements FileSystem {
                 if (entry.isFile() && yarnFS.isZip(path)) {
                     return {
                         name: entry.name,
+                        parentPath: path,
+                        path: path,
                         isFile: () => false,
                         isDirectory: () => true,
                         isBlockDevice: () => false,
@@ -288,20 +299,50 @@ class RealFileSystem implements FileSystem {
         yarnFS.writeFileSync(path, data, encoding || undefined);
     }
 
-    statSync(uri: Uri) {
-        const path = uri.getFilePath();
-        const stat = yarnFS.statSync(path);
-        // Treat zip/egg files as directories.
-        // See: https://github.com/yarnpkg/berry/blob/master/packages/vscode-zipfs/sources/ZipFSProvider.ts
-        if (hasZipExtension(path)) {
-            if (stat.isFile() && yarnFS.isZip(path)) {
-                stat.isFile = () => false;
-                stat.isDirectory = () => true;
-                (stat as any).isZipDirectory = () => true;
-                return stat;
+    statSync(uri: Uri): fs.Stats {
+        if (FileUri.isFileUri(uri)) {
+            const path = uri.getFilePath();
+            const stat = yarnFS.statSync(path);
+            // Treat zip/egg files as directories.
+            // See: https://github.com/yarnpkg/berry/blob/master/packages/vscode-zipfs/sources/ZipFSProvider.ts
+            if (hasZipExtension(path)) {
+                if (stat.isFile() && yarnFS.isZip(path)) {
+                    stat.isFile = () => false;
+                    stat.isDirectory = () => true;
+                    (stat as any).isZipDirectory = () => true;
+                    return stat;
+                }
             }
+            return stat;
+        } else {
+            return {
+                isFile: () => false,
+                isDirectory: () => false,
+                isBlockDevice: () => false,
+                isCharacterDevice: () => false,
+                isSymbolicLink: () => false,
+                isFIFO: () => false,
+                isSocket: () => false,
+                dev: 0,
+                atimeMs: 0,
+                mtimeMs: 0,
+                ctimeMs: 0,
+                birthtimeMs: 0,
+                size: 0,
+                blksize: 0,
+                blocks: 0,
+                ino: 0,
+                mode: 0,
+                nlink: 0,
+                uid: 0,
+                gid: 0,
+                rdev: 0,
+                atime: new Date(),
+                mtime: new Date(),
+                ctime: new Date(),
+                birthtime: new Date(),
+            };
         }
-        return stat;
     }
 
     rmdirSync(uri: Uri): void {
@@ -317,7 +358,7 @@ class RealFileSystem implements FileSystem {
     realpathSync(uri: Uri) {
         try {
             const path = uri.getFilePath();
-            return Uri.file(yarnFS.realpathSync(path), this._isCaseSensitive);
+            return Uri.file(yarnFS.realpathSync(path), this._caseSensitiveDetector);
         } catch (e: any) {
             return uri;
         }
@@ -327,7 +368,7 @@ class RealFileSystem implements FileSystem {
         // The entry point to the tool should have set the __rootDirectory
         // global variable to point to the directory that contains the
         // typeshed-fallback directory.
-        return getRootUri(this._isCaseSensitive) || Uri.empty();
+        return getRootUri(this._caseSensitiveDetector) || Uri.empty();
     }
 
     createFileSystemWatcher(paths: Uri[], listener: FileWatcherEventHandler): FileWatcher {
@@ -374,23 +415,23 @@ class RealFileSystem implements FileSystem {
                 return uri;
             }
 
-            // If it does exist, skip this for symlinks.
-            const path = uri.getFilePath();
-            const stat = fs.lstatSync(path);
-            if (stat.isSymbolicLink()) {
-                return uri;
-            }
-
             // realpathSync.native will return casing as in OS rather than
             // trying to preserve casing given.
-            const realCase = fs.realpathSync.native(path);
+            const realCase = fs.realpathSync.native(uri.getFilePath());
 
-            // On UNC mapped drives we want to keep the original drive letter.
-            if (getRootLength(realCase) !== getRootLength(path)) {
+            // If the original and real case paths differ by anything other than case,
+            // then there's a symbolic link or something of that sort involved. Return
+            // the original path instead.
+            if (uri.getFilePath().toLowerCase() !== realCase.toLowerCase()) {
                 return uri;
             }
 
-            return Uri.file(realCase, this._isCaseSensitive);
+            // On UNC mapped drives we want to keep the original drive letter.
+            if (getRootLength(realCase) !== getRootLength(uri.getFilePath())) {
+                return uri;
+            }
+
+            return Uri.file(realCase, this._caseSensitiveDetector);
         } catch (e: any) {
             // Return as it is, if anything failed.
             this._console.log(`Failed to get real file system casing for ${uri}: ${e}`);
@@ -452,25 +493,41 @@ export class WorkspaceFileWatcherProvider implements FileWatcherProvider, FileWa
         // to raise events both for source and library if .venv is inside of workspace root
         // for a file change. It is event handler's job to filter those out.
         this._fileWatchers.forEach((watcher) => {
-            if (watcher.workspacePaths.some((dirPath) => fileUri.pathStartsWith(dirPath))) {
+            if (watcher.workspacePaths.some((dirPath) => fileUri.getFilePath().startsWith(dirPath))) {
                 watcher.eventHandler(eventType, fileUri.getFilePath());
             }
         });
     }
 }
 
-export class RealTempFile implements TempFile {
+export class RealTempFile implements TempFile, CaseSensitivityDetector {
+    private _caseSensitivity?: boolean;
     private _tmpdir?: tmp.DirResult;
 
-    constructor(private readonly _isCaseSensitive: boolean) {}
+    constructor(name?: string) {
+        if (name) {
+            this._tmpdir = {
+                name,
+                removeCallback: () => {
+                    // If a name is provided, the temp folder is not managed by this instance.
+                    // Do nothing.
+                },
+            };
+        }
+    }
 
     tmpdir(): Uri {
-        return Uri.file(this._getTmpDir().name, this._isCaseSensitive);
+        return Uri.file(this._getTmpDir().name, this);
     }
 
     tmpfile(options?: TmpfileOptions): Uri {
         const f = tmp.fileSync({ dir: this._getTmpDir().name, discardDescriptor: true, ...options });
-        return Uri.file(f.name, this._isCaseSensitive);
+        return Uri.file(f.name, this);
+    }
+
+    mktmpdir(): Uri {
+        const d = tmp.dirSync();
+        return Uri.file(d.name, this);
     }
 
     dispose(): void {
@@ -482,11 +539,57 @@ export class RealTempFile implements TempFile {
         }
     }
 
+    isCaseSensitive(uri: string): boolean {
+        if (uri.startsWith(FileUriSchema)) {
+            return this._isLocalFileSystemCaseSensitive();
+        }
+
+        return true;
+    }
+
+    private _isLocalFileSystemCaseSensitive() {
+        if (this._caseSensitivity === undefined) {
+            this._caseSensitivity = this._isFileSystemCaseSensitiveInternal();
+        }
+
+        return this._caseSensitivity;
+    }
+
     private _getTmpDir(): tmp.DirResult {
         if (!this._tmpdir) {
             this._tmpdir = tmp.dirSync({ prefix: 'pyright' });
         }
 
         return this._tmpdir;
+    }
+
+    private _isFileSystemCaseSensitiveInternal() {
+        let filePath: string | undefined = undefined;
+        try {
+            // Make unique file name.
+            let name: string;
+            let mangledFilePath: string;
+            do {
+                name = `${randomBytesHex(21)}-a`;
+                filePath = combinePaths(this._getTmpDir().name, name);
+                mangledFilePath = combinePaths(this._getTmpDir().name, name.toUpperCase());
+            } while (fs.existsSync(filePath) || fs.existsSync(mangledFilePath));
+
+            fs.writeFileSync(filePath, '', 'utf8');
+
+            // If file exists, then it is insensitive.
+            return !fs.existsSync(mangledFilePath);
+        } catch (e: any) {
+            return false;
+        } finally {
+            if (filePath) {
+                // remove temp file created
+                try {
+                    fs.unlinkSync(filePath);
+                } catch (e: any) {
+                    /* ignored */
+                }
+            }
+        }
     }
 }

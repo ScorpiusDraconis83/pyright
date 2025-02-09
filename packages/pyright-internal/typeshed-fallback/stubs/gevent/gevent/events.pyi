@@ -15,7 +15,7 @@ _T = TypeVar("_T")
 #        can get rid of later
 Interface: TypeAlias = Any
 
-def implementer(__interface: Interface) -> Callable[[_T], _T]: ...
+def implementer(interface: Interface, /) -> Callable[[_T], _T]: ...
 
 # this is copied from types-psutil, it would be nice if we could just import this
 # but it doesn't seem like we can...
@@ -49,13 +49,15 @@ class IEventLoopBlocked(Interface):
     greenlet: greenlet_t
     blocking_time: float
     info: Sequence[str]
+    hub: Hub | None
 
 @implementer(IEventLoopBlocked)
 class EventLoopBlocked:
     greenlet: greenlet_t
     blocking_time: float
     info: Sequence[str]
-    def __init__(self, greenlet: greenlet_t, blocking_time: float, info: Sequence[str]) -> None: ...
+    hub: Hub | None
+    def __init__(self, greenlet: greenlet_t, blocking_time: float, info: Sequence[str], *, hub: Hub | None = None) -> None: ...
 
 class IMemoryUsageThresholdExceeded(Interface):
     mem_usage: int

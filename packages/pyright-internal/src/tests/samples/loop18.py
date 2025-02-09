@@ -1,6 +1,6 @@
 # This sample tests type narrowing in a loop.
 
-from typing_extensions import Self
+from typing_extensions import Self  # pyright: ignore[reportMissingModuleSource]
 from collections.abc import Generator
 
 

@@ -1,16 +1,21 @@
 {
     "extends": "../../tsconfig.json",
     "compilerOptions": {
-        "outDir": "./out"
+        "outDir": "./out",
+        "paths": {
+        },
+        "typeRoots": ["./node_modules/@types", "./typings"]
     },
     "include": [
         "src/**/*",
         "src/localization/*.json",
-        "**/*.js"
+        "**/*.js",
+        "package.json", "typings/promise.d.ts",
     ],
     "exclude": [
         "node_modules",
         "dist",
-        "out"
+        "out",
+        "debug.js",
     ]
 }

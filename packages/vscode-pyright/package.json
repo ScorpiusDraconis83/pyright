@@ -2,7 +2,7 @@
     "name": "vscode-pyright",
     "displayName": "Pyright",
     "description": "VS Code static type checking for Python",
-    "version": "1.1.342",
+    "version": "1.1.393",
     "private": true,
     "license": "MIT",
     "author": {
@@ -14,7 +14,7 @@
         "url": "https://github.com/Microsoft/pyright"
     },
     "engines": {
-        "vscode": "^1.78.0"
+        "vscode": "^1.91.0"
     },
     "keywords": [
         "python"
@@ -271,6 +271,22 @@
                                 false
                             ]
                         },
+                        "reportInvalidTypeForm": {
+                            "type": [
+                                "string",
+                                "boolean"
+                            ],
+                            "description": "Diagnostics for type expression that uses an invalid form.",
+                            "default": "error",
+                            "enum": [
+                                "none",
+                                "information",
+                                "warning",
+                                "error",
+                                true,
+                                false
+                            ]
+                        },
                         "reportMissingTypeStubs": {
                             "type": [
                                 "string",
@@ -399,6 +415,182 @@
                                 false
                             ]
                         },
+                        "reportAbstractUsage": {
+                            "type": [
+                                "string",
+                                "boolean"
+                            ],
+                            "description": "Diagnostics for an attempt to instantiate an abstract or protocol class or use an abstract method.",
+                            "default": "error",
+                            "enum": [
+                                "none",
+                                "information",
+                                "warning",
+                                "error",
+                                true,
+                                false
+                            ]
+                        },
+                        "reportArgumentType": {
+                            "type": [
+                                "string",
+                                "boolean"
+                            ],
+                            "description": "Diagnostics for a type incompatibility for an argument to a call.",
+                            "default": "error",
+                            "enum": [
+                                "none",
+                                "information",
+                                "warning",
+                                "error",
+                                true,
+                                false
+                            ]
+                        },
+                        "reportAssertTypeFailure": {
+                            "type": [
+                                "string",
+                                "boolean"
+                            ],
+                            "description": "Diagnostics for a type incompatibility detected by a typing.assert_type call.",
+                            "default": "error",
+                            "enum": [
+                                "none",
+                                "information",
+                                "warning",
+                                "error",
+                                true,
+                                false
+                            ]
+                        },
+                        "reportAssignmentType": {
+                            "type": [
+                                "string",
+                                "boolean"
+                            ],
+                            "description": "Diagnostics for type incompatibilities for assignments.",
+                            "default": "error",
+                            "enum": [
+                                "none",
+                                "information",
+                                "warning",
+                                "error",
+                                true,
+                                false
+                            ]
+                        },
+                        "reportAttributeAccessIssue": {
+                            "type": [
+                                "string",
+                                "boolean"
+                            ],
+                            "description": "Diagnostics for issues involving attribute accesses.",
+                            "default": "error",
+                            "enum": [
+                                "none",
+                                "information",
+                                "warning",
+                                "error",
+                                true,
+                                false
+                            ]
+                        },
+                        "reportCallIssue": {
+                            "type": [
+                                "string",
+                                "boolean"
+                            ],
+                            "description": "Diagnostics for issues involving call expressions and arguments.",
+                            "default": "error",
+                            "enum": [
+                                "none",
+                                "information",
+                                "warning",
+                                "error",
+                                true,
+                                false
+                            ]
+                        },
+                        "reportInconsistentOverload": {
+                            "type": [
+                                "string",
+                                "boolean"
+                            ],
+                            "description": "Diagnostics for inconsistencies between function overload signatures and implementation.",
+                            "default": "error",
+                            "enum": [
+                                "none",
+                                "information",
+                                "warning",
+                                "error",
+                                true,
+                                false
+                            ]
+                        },
+                        "reportIndexIssue": {
+                            "type": [
+                                "string",
+                                "boolean"
+                            ],
+                            "description": "Diagnostics related to index operations and expressions.",
+                            "default": "error",
+                            "enum": [
+                                "none",
+                                "information",
+                                "warning",
+                                "error",
+                                true,
+                                false
+                            ]
+                        },
+                        "reportInvalidTypeArguments": {
+                            "type": [
+                                "string",
+                                "boolean"
+                            ],
+                            "description": "Diagnostics for invalid type argument usage.",
+                            "default": "error",
+                            "enum": [
+                                "none",
+                                "information",
+                                "warning",
+                                "error",
+                                true,
+                                false
+                            ]
+                        },
+                        "reportNoOverloadImplementation": {
+                            "type": [
+                                "string",
+                                "boolean"
+                            ],
+                            "description": "Diagnostics for an overloaded function or method with a missing implementation.",
+                            "default": "error",
+                            "enum": [
+                                "none",
+                                "information",
+                                "warning",
+                                "error",
+                                true,
+                                false
+                            ]
+                        },
+                        "reportOperatorIssue": {
+                            "type": [
+                                "string",
+                                "boolean"
+                            ],
+                            "description": "Diagnostics for related to unary or binary operators.",
+                            "default": "error",
+                            "enum": [
+                                "none",
+                                "information",
+                                "warning",
+                                "error",
+                                true,
+                                false
+                            ]
+                        },
                         "reportOptionalSubscript": {
                             "type": [
                                 "string",
@@ -485,6 +677,38 @@
                                 "boolean"
                             ],
                             "description": "Diagnostics for an attempt to use an Optional type as an operand to a binary or unary operator (like '+', '==', 'or', 'not').",
+                            "default": "error",
+                            "enum": [
+                                "none",
+                                "information",
+                                "warning",
+                                "error",
+                                true,
+                                false
+                            ]
+                        },
+                        "reportRedeclaration": {
+                            "type": [
+                                "string",
+                                "boolean"
+                            ],
+                            "description": "Diagnostics for an attempt to declare the type of a symbol multiple times.",
+                            "default": "error",
+                            "enum": [
+                                "none",
+                                "information",
+                                "warning",
+                                "error",
+                                true,
+                                false
+                            ]
+                        },
+                        "reportReturnType": {
+                            "type": [
+                                "string",
+                                "boolean"
+                            ],
+                            "description": "Diagnostics related to function return type compatibility.",
                             "default": "error",
                             "enum": [
                                 "none",
@@ -719,6 +943,22 @@
                                 false
                             ]
                         },
+                        "reportPossiblyUnboundVariable": {
+                            "type": [
+                                "string",
+                                "boolean"
+                            ],
+                            "description": "Diagnostics for the use of variables that may be unbound on some code paths.",
+                            "default": "error",
+                            "enum": [
+                                "none",
+                                "information",
+                                "warning",
+                                "error",
+                                true,
+                                false
+                            ]
+                        },
                         "reportMissingSuperCall": {
                             "type": [
                                 "string",
@@ -916,7 +1156,7 @@
                                 "string",
                                 "boolean"
                             ],
-                            "description": "Diagnostics for 'isinstance' or 'issubclass' calls where the result is statically determined to be always true. Such calls are often indicative of a programming error.",
+                            "description": "Diagnostics for 'isinstance' or 'issubclass' calls where the result is statically determined to be always (or never) true. Such calls are often indicative of a programming error.",
                             "default": "none",
                             "enum": [
                                 "none",
@@ -1076,7 +1316,23 @@
                                 "string",
                                 "boolean"
                             ],
-                            "description": "Diagnostics for unbound and possibly unbound variables.",
+                            "description": "Diagnostics for the use of unbound variables.",
+                            "default": "error",
+                            "enum": [
+                                "none",
+                                "information",
+                                "warning",
+                                "error",
+                                true,
+                                false
+                            ]
+                        },
+                        "reportUnhashable": {
+                            "type": [
+                                "string",
+                                "boolean"
+                            ],
+                            "description": "Diagnostics for the use of an unhashable object in a container that requires hashability.",
                             "default": "error",
                             "enum": [
                                 "none",
@@ -1125,6 +1381,22 @@
                                 "boolean"
                             ],
                             "description": "Diagnostics for call expressions that return a Coroutine and whose results are not consumed.",
+                            "default": "error",
+                            "enum": [
+                                "none",
+                                "information",
+                                "warning",
+                                "error",
+                                true,
+                                false
+                            ]
+                        },
+                        "reportUnusedExcept": {
+                            "type": [
+                                "string",
+                                "boolean"
+                            ],
+                            "description": "Diagnostics for unreachable except clause.",
                             "default": "error",
                             "enum": [
                                 "none",
@@ -1261,6 +1533,12 @@
                     "description": "Disables type completion, definitions, and references.",
                     "scope": "resource"
                 },
+                "pyright.disableTaggedHints": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Disable hint diagnostics with special hints for grayed-out or strike-through text.",
+                    "scope": "resource"
+                },
                 "pyright.disableOrganizeImports": {
                     "type": "boolean",
                     "default": false,
@@ -1298,22 +1576,21 @@
         "webpack-dev": "npm run clean && webpack --mode development --watch --progress"
     },
     "dependencies": {
-        "vscode-jsonrpc": "8.1.0",
-        "vscode-languageclient": "8.1.0",
-        "vscode-languageserver": "8.1.0",
-        "vscode-languageserver-protocol": "3.17.3"
+        "vscode-jsonrpc": "^9.0.0-next.5",
+        "vscode-languageclient": "^10.0.0-next.12",
+        "vscode-languageserver": "^10.0.0-next.10",
+        "vscode-languageserver-protocol": "^3.17.6-next.10"
     },
     "devDependencies": {
-        "@types/node": "^17.0.45",
-        "@types/vscode": "^1.78.0",
+        "@types/node": "^22.10.5",
+        "@types/vscode": "^1.90.0",
+        "@vscode/vsce": "^2.32.0",
         "copy-webpack-plugin": "^11.0.0",
-        "detect-indent": "^6.1.0",
-        "esbuild-loader": "^3.0.1",
+        "esbuild-loader": "^3.2.0",
         "shx": "^0.3.4",
-        "ts-loader": "^9.4.4",
-        "typescript": "~5.2",
-        "vsce": "^2.7.0",
-        "webpack": "^5.88.1",
+        "ts-loader": "^9.5.1",
+        "typescript": "~5.5.4",
+        "webpack": "^5.97.1",
         "webpack-cli": "^5.1.4"
     }
 }

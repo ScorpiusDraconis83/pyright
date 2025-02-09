@@ -2,7 +2,7 @@
 # and is later specialized is honored.
 
 from typing import Protocol, TypeVar, Callable, Protocol, Any
-from typing_extensions import Unpack
+from typing_extensions import Unpack  # pyright: ignore[reportMissingModuleSource]
 
 
 class SupportsSum(Protocol):

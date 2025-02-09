@@ -1,8 +1,8 @@
 # This sample tests handling of the Python 3.9 "Annotated" feature
 # described in PEP 593.
 
-from typing import Annotated, TypeVar, ClassVar, Final
 from dataclasses import InitVar, dataclass
+from typing import Annotated, ClassVar, Final, TypeVar
 
 
 class struct2:
@@ -54,6 +54,7 @@ _T = TypeVar("_T")
 Param = Annotated[_T, "x"]
 
 x1: Param[int] = 3
+print(Param[int])
 
 
 class A:
@@ -88,3 +89,14 @@ async def func3():
 x5: Annotated[str, f""]
 x6: Annotated[str, "a" "b" "c"]
 x7: Annotated[str, "a\nb"]
+x8: Annotated[str, *(1, 2, 3)]
+
+
+def func4():
+    return Annotated[int, 2 + 2]
+
+
+reveal_type(func4(), expected_text="Annotated")
+
+x9 = list[Annotated[int, ""]]()
+reveal_type(x9, expected_text="list[int]")

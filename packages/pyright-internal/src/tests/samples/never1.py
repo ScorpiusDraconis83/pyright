@@ -2,7 +2,7 @@
 # ensuring that it's treated as the same as NoReturn.
 
 from typing import NoReturn, TypeVar, Generic
-from typing_extensions import Never
+from typing_extensions import Never  # pyright: ignore[reportMissingModuleSource]
 
 T = TypeVar("T")
 

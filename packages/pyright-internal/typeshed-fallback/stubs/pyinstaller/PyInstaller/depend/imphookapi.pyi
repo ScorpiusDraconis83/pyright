@@ -5,7 +5,7 @@
 from _typeshed import StrOrBytesPath
 from collections.abc import Generator, Iterable
 from types import CodeType
-from typing_extensions import Literal
+from typing import Literal
 
 from PyInstaller.building.build_main import Analysis
 from PyInstaller.building.datastruct import TOC
@@ -68,3 +68,4 @@ class PostGraphAPI:
     def set_module_collection_mode(
         self, name: str | None, mode: Literal["pyz", "pyc", "py", "pyz+py", "py+pyz"] | None
     ) -> None: ...
+    def add_bindepend_symlink_suppression_pattern(self, pattern: str) -> None: ...

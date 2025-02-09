@@ -1,5 +1,8 @@
 from _typeshed import Incomplete
 
+from networkx.utils.backends import _dispatchable
+
+@_dispatchable
 def shortest_augmenting_path(
     G,
     s,
