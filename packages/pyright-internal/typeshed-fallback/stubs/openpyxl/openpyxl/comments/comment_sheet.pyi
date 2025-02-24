@@ -1,8 +1,9 @@
 from _typeshed import ConvertibleToInt, Incomplete, Unused
 from collections.abc import Generator
-from typing import ClassVar, overload
-from typing_extensions import Literal, TypeAlias
+from typing import ClassVar, Literal, overload
+from typing_extensions import TypeAlias
 
+from openpyxl.cell import _CellOrMergedCell
 from openpyxl.cell.text import Text
 from openpyxl.comments.author import AuthorList
 from openpyxl.comments.comments import Comment
@@ -101,7 +102,7 @@ class CommentRecord(Serialisable):
         width: int = 144,
     ) -> None: ...
     @classmethod
-    def from_cell(cls, cell): ...
+    def from_cell(cls, cell: _CellOrMergedCell): ...
     @property
     def content(self) -> str: ...
 

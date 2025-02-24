@@ -2,7 +2,9 @@
 # within each other.
 
 from typing import Any, Iterable, TypeVar, Protocol, overload
-from typing_extensions import LiteralString
+from typing_extensions import (  # pyright: ignore[reportMissingModuleSource]
+    LiteralString,
+)
 
 _T = TypeVar("_T")
 _T_co = TypeVar("_T_co", covariant=True)

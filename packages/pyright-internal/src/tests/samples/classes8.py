@@ -5,7 +5,7 @@
 from os import DirEntry
 from types import TracebackType
 from typing import AnyStr, ContextManager, Iterator
-from typing_extensions import Self
+from typing_extensions import Self  # pyright: ignore[reportMissingModuleSource]
 
 
 class _ScandirIterator(

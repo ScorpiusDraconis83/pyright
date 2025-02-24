@@ -4,12 +4,18 @@
 # to another.
 
 from typing import Callable, Generic, Unpack
-from typing_extensions import ParamSpec, TypeVar, TypeVarTuple
+from typing_extensions import (  # pyright: ignore[reportMissingModuleSource]
+    ParamSpec,
+    TypeVar,
+    TypeVarTuple,
+)
 
 T1 = TypeVar("T1", default=str)
 T2 = TypeVar("T2", default=T1)
 T3 = TypeVar("T3", default=list[T2])
 T4 = TypeVar("T4", default=dict[T1, T2])
+
+# This should generate an error because of the recursive definition.
 T5 = TypeVar("T5", default="T5")
 
 TA_A = dict[T1, T2]
@@ -112,6 +118,7 @@ def func5(
 
 
 # This should generate an error because Ts1 depends on T2.
+# It should also generate a second error because T2 follows a TypeVarTuple.
 TA_TB = tuple[T1, *Ts1, T2]
 
 

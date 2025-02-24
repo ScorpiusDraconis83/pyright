@@ -53,11 +53,14 @@ const pythonPathChangedListenerMap = new Map<string, string>();
 const defaultHeapSize = 3072;
 
 export async function activate(context: ExtensionContext) {
+    const pythonSettings = workspace.getConfiguration('python');
+    const langServer = pythonSettings.get('languageServer');
+
     // See if Pylance is installed. If so, don't activate the Pyright extension.
     // Doing so will generate "command already registered" errors and redundant
     // hover text, etc.because the two extensions overlap in functionality.
     const pylanceExtension = extensions.getExtension('ms-python.vscode-pylance');
-    if (pylanceExtension) {
+    if (pylanceExtension && langServer !== 'None') {
         window.showErrorMessage(
             'Pyright has detected that the Pylance extension is installed. ' +
                 'Pylance includes the functionality of Pyright, and running both of ' +
@@ -96,9 +99,8 @@ export async function activate(context: ExtensionContext) {
     const clientOptions: LanguageClientOptions = {
         // Register the server for python source files.
         documentSelector: [
-            {
-                language: 'python',
-            },
+            { scheme: 'file', language: 'python' },
+            { scheme: 'untitled', language: 'python' },
         ],
         synchronize: {
             // Synchronize the setting section to the server.
@@ -228,11 +230,11 @@ export async function activate(context: ExtensionContext) {
         // Register the commands that only work when in development mode.
         context.subscriptions.push(
             commands.registerCommand(Commands.dumpTokens, () => {
-                const fileName = window.activeTextEditor?.document.fileName;
-                if (fileName) {
+                const uri = window.activeTextEditor?.document.uri.toString();
+                if (uri) {
                     client.sendRequest('workspace/executeCommand', {
                         command: Commands.dumpFileDebugInfo,
-                        arguments: [fileName, 'tokens'],
+                        arguments: [uri, 'tokens'],
                     });
                 }
             })
@@ -240,11 +242,11 @@ export async function activate(context: ExtensionContext) {
 
         context.subscriptions.push(
             commands.registerCommand(Commands.dumpNodes, () => {
-                const fileName = window.activeTextEditor?.document.fileName;
-                if (fileName) {
+                const uri = window.activeTextEditor?.document.uri.toString();
+                if (uri) {
                     client.sendRequest('workspace/executeCommand', {
                         command: Commands.dumpFileDebugInfo,
-                        arguments: [fileName, 'nodes'],
+                        arguments: [uri, 'nodes'],
                     });
                 }
             })
@@ -252,43 +254,43 @@ export async function activate(context: ExtensionContext) {
 
         context.subscriptions.push(
             commands.registerCommand(Commands.dumpTypes, () => {
-                const fileName = window.activeTextEditor?.document.fileName;
-                if (fileName) {
+                const uri = window.activeTextEditor?.document.uri.toString();
+                if (uri) {
                     const start = window.activeTextEditor!.selection.start;
                     const end = window.activeTextEditor!.selection.end;
                     const startOffset = window.activeTextEditor!.document.offsetAt(start);
                     const endOffset = window.activeTextEditor!.document.offsetAt(end);
                     client.sendRequest('workspace/executeCommand', {
                         command: Commands.dumpFileDebugInfo,
-                        arguments: [fileName, 'types', startOffset, endOffset],
+                        arguments: [uri, 'types', startOffset, endOffset],
                     });
                 }
             })
         );
         context.subscriptions.push(
             commands.registerCommand(Commands.dumpCachedTypes, () => {
-                const fileName = window.activeTextEditor?.document.fileName;
-                if (fileName) {
+                const uri = window.activeTextEditor?.document.uri.toString();
+                if (uri) {
                     const start = window.activeTextEditor!.selection.start;
                     const end = window.activeTextEditor!.selection.end;
                     const startOffset = window.activeTextEditor!.document.offsetAt(start);
                     const endOffset = window.activeTextEditor!.document.offsetAt(end);
                     client.sendRequest('workspace/executeCommand', {
                         command: Commands.dumpFileDebugInfo,
-                        arguments: [fileName, 'cachedtypes', startOffset, endOffset],
+                        arguments: [uri, 'cachedtypes', startOffset, endOffset],
                     });
                 }
             })
         );
         context.subscriptions.push(
             commands.registerCommand(Commands.dumpCodeFlowGraph, () => {
-                const fileName = window.activeTextEditor?.document.fileName;
-                if (fileName) {
+                const uri = window.activeTextEditor?.document.uri.toString();
+                if (uri) {
                     const start = window.activeTextEditor!.selection.start;
                     const startOffset = window.activeTextEditor!.document.offsetAt(start);
                     client.sendRequest('workspace/executeCommand', {
                         command: Commands.dumpFileDebugInfo,
-                        arguments: [fileName, 'codeflowgraph', startOffset],
+                        arguments: [uri, 'codeflowgraph', startOffset],
                     });
                 }
             })

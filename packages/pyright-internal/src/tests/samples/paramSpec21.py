@@ -2,7 +2,10 @@
 # and destination callback protocol.
 
 from typing import Callable, Protocol
-from typing_extensions import Concatenate, ParamSpec
+from typing_extensions import (  # pyright: ignore[reportMissingModuleSource]
+    Concatenate,
+    ParamSpec,
+)
 
 P1 = ParamSpec("P1")
 P2 = ParamSpec("P2")

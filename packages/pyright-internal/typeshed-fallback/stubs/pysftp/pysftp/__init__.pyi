@@ -2,8 +2,8 @@ from collections.abc import Callable, Sequence
 from contextlib import AbstractContextManager
 from stat import S_IMODE as S_IMODE
 from types import TracebackType
-from typing import IO
-from typing_extensions import Literal, Self, TypeAlias
+from typing import IO, Literal
+from typing_extensions import Self, TypeAlias
 
 import paramiko
 from paramiko import AuthenticationException as AuthenticationException
@@ -25,7 +25,7 @@ from pysftp.helpers import (
 )
 
 class CnOpts:
-    log: bool
+    log: bool | str
     compression: bool
     ciphers: Sequence[str] | None
     hostkeys: paramiko.HostKeys | None
@@ -45,7 +45,7 @@ class Connection:
         port: int = 22,
         private_key_pass: str | None = None,
         ciphers: Sequence[str] | None = None,
-        log: bool = False,
+        log: bool | str = False,
         cnopts: CnOpts | None = None,
         default_path: _Path | None = None,
     ) -> None: ...

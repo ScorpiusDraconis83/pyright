@@ -2,7 +2,7 @@
 # where it is not allowed.
 
 from typing import Annotated, Any, ClassVar, Final, Generic, TypeAlias, TypeVar
-from typing_extensions import Self
+from typing_extensions import Self  # pyright: ignore[reportMissingModuleSource]
 
 # This should generate an error.
 x: ClassVar[int] = 3
@@ -29,6 +29,15 @@ class Foo(Generic[T]):
     # This should generate an error because TypeVars cannot
     # be used in a ClassVar.
     illegal2: ClassVar[T]
+
+    # This should generate an error because Final cannot be
+    # used with a ClassVar.
+    illegal3: ClassVar[Final] = 0
+
+    # This should generate an error because Final cannot be
+    # used with a ClassVar. A second error is generated because
+    # Final[int] is not interpreted as a valid type.
+    illegal4: ClassVar[Final[int]] = 0
 
     ok1: ClassVar[list]
     ok2: ClassVar[list[Any]]

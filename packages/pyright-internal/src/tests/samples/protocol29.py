@@ -2,7 +2,10 @@
 # generics within a protocol.
 
 from functools import partial
-from typing_extensions import Protocol, Self
+from typing_extensions import (  # pyright: ignore[reportMissingModuleSource]
+    Protocol,
+    Self,
+)
 from typing import Any, Callable, TypeVar
 
 _T = TypeVar("_T", covariant=True)

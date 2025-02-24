@@ -4,7 +4,9 @@
 from dataclasses import dataclass
 
 from typing import overload, Any, TypeVar, Generic, Optional, Union, Callable, Type
-from typing_extensions import dataclass_transform
+from typing_extensions import (  # pyright: ignore[reportMissingModuleSource]
+    dataclass_transform,
+)
 
 
 _T = TypeVar("_T")

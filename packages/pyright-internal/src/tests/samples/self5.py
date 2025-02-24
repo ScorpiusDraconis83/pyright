@@ -1,7 +1,7 @@
 # This sample tests the use of `Self` when used within a property
 # or class property.
 
-from typing_extensions import Self
+from typing_extensions import Self  # pyright: ignore[reportMissingModuleSource]
 
 
 class A:

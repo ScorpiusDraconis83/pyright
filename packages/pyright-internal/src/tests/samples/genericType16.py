@@ -8,7 +8,7 @@ from typing import Any, Literal, TypeVar
 _T = TypeVar("_T")
 
 
-def func1(__o: object, name: str, __default: _T) -> Any | _T:
+def func1(__o: object, __name: str, __default: _T) -> Any | _T:
     ...
 
 

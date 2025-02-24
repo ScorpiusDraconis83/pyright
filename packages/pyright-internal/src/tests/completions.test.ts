@@ -799,7 +799,7 @@ test('completion quote trigger', async () => {
     const state = parseAndGetTestState(code).state;
     const marker = state.getMarkerByName('marker');
     const filePath = marker.fileName;
-    const uri = Uri.file(filePath);
+    const uri = Uri.file(filePath, state.serviceProvider);
     const position = state.convertOffsetToPosition(filePath, marker.position);
 
     const options: CompletionOptions = {
@@ -811,7 +811,6 @@ test('completion quote trigger', async () => {
 
     const result = new CompletionProvider(
         state.program,
-        state.workspace.rootUri,
         uri,
         position,
         options,
@@ -838,7 +837,7 @@ test('completion quote trigger - middle', async () => {
     const state = parseAndGetTestState(code).state;
     const marker = state.getMarkerByName('marker');
     const filePath = marker.fileName;
-    const uri = Uri.file(filePath);
+    const uri = Uri.file(filePath, state.serviceProvider);
     const position = state.convertOffsetToPosition(filePath, marker.position);
 
     const options: CompletionOptions = {
@@ -850,7 +849,6 @@ test('completion quote trigger - middle', async () => {
 
     const result = new CompletionProvider(
         state.program,
-        state.workspace.rootUri,
         uri,
         position,
         options,
@@ -885,7 +883,7 @@ test('auto import sort text', async () => {
     while (state.workspace.service.test_program.analyze());
 
     const filePath = marker.fileName;
-    const uri = Uri.file(filePath);
+    const uri = Uri.file(filePath, state.serviceProvider);
     const position = state.convertOffsetToPosition(filePath, marker.position);
 
     const options: CompletionOptions = {
@@ -896,7 +894,6 @@ test('auto import sort text', async () => {
 
     const result = new CompletionProvider(
         state.program,
-        state.workspace.rootUri,
         uri,
         position,
         options,
@@ -1151,7 +1148,7 @@ test('Enum member', async () => {
                 {
                     label: 'this',
                     kind: CompletionItemKind.EnumMember,
-                    documentation: '```python\nthis: Literal[MyEnum.this]\n```',
+                    documentation: '```python\nthis: int\n```',
                 },
             ],
         },
@@ -1250,6 +1247,32 @@ test('TypeDict literal values', async () => {
     });
 });
 
+test('typed dict key constructor completion', async () => {
+    const code = `
+// @filename: test.py
+//// from typing import TypedDict
+//// 
+//// class Movie(TypedDict):
+////    key1: str
+//// 
+//// a = Movie(k[|"/*marker*/"|])
+//// 
+    `;
+
+    const state = parseAndGetTestState(code).state;
+
+    await state.verifyCompletion('included', MarkupKind.Markdown, {
+        marker: {
+            completions: [
+                {
+                    kind: CompletionItemKind.Variable,
+                    label: 'key1=',
+                },
+            ],
+        },
+    });
+});
+
 test('import from completion for namespace package', async () => {
     const code = `
 // @filename: test.py
@@ -1273,6 +1296,140 @@ test('import from completion for namespace package', async () => {
                 },
                 {
                     label: 'module',
+                    kind: CompletionItemKind.Module,
+                },
+            ],
+        },
+    });
+});
+
+test('members off enum member', async () => {
+    const code = `
+// @filename: test.py
+//// from enum import Enum
+//// class Planet(Enum):
+////     MERCURY = (3.303e+23, 2.4397e6)
+////     EARTH   = (5.976e+24, 6.37814e6)
+////
+////     def __init__(self, mass, radius):
+////         self.mass = mass       # in kilograms
+////         self.radius = radius   # in meters
+////
+////     @property
+////     def surface_gravity(self):
+////         # universal gravitational constant  (m3 kg-1 s-2)
+////         G = 6.67300E-11
+////         return G * self.mass / (self.radius * self.radius)
+////
+//// Planet.EARTH.[|/*marker*/|]
+    `;
+
+    const state = parseAndGetTestState(code).state;
+
+    await state.verifyCompletion('excluded', 'markdown', {
+        ['marker']: {
+            completions: [
+                {
+                    label: 'MERCURY',
+                    kind: CompletionItemKind.EnumMember,
+                },
+                {
+                    label: 'EARTH',
+                    kind: CompletionItemKind.EnumMember,
+                },
+            ],
+        },
+    });
+
+    await state.verifyCompletion('included', 'markdown', {
+        ['marker']: {
+            completions: [
+                {
+                    label: 'mass',
+                    kind: CompletionItemKind.Variable,
+                },
+                {
+                    label: 'radius',
+                    kind: CompletionItemKind.Variable,
+                },
+                {
+                    label: 'surface_gravity',
+                    kind: CompletionItemKind.Property,
+                },
+            ],
+        },
+    });
+});
+
+test('handle missing close paren case', async () => {
+    const code = `
+// @filename: test.py
+//// count=100
+//// while count <= (c[|/*marker*/|]
+    `;
+
+    const state = parseAndGetTestState(code).state;
+
+    await state.verifyCompletion('included', 'markdown', {
+        ['marker']: {
+            completions: [
+                {
+                    label: 'count',
+                    kind: CompletionItemKind.Variable,
+                },
+            ],
+        },
+    });
+});
+
+test('enum with regular base type', async () => {
+    const code = `
+// @filename: test.py
+//// from enum import Enum
+//// from datetime import timedelta
+//// class Period(timedelta, Enum):
+////     Today = -1
+////
+//// Period.Today.[|/*marker*/|]
+    `;
+
+    const state = parseAndGetTestState(code).state;
+
+    await state.verifyCompletion('included', 'markdown', {
+        ['marker']: {
+            completions: [
+                {
+                    label: 'days',
+                    kind: CompletionItemKind.Property,
+                },
+                {
+                    label: 'seconds',
+                    kind: CompletionItemKind.Property,
+                },
+            ],
+        },
+    });
+});
+
+test('import statements with implicit import', async () => {
+    const code = `
+// @filename: test.py
+//// from lib import /*marker*/
+
+// @filename: lib/__init__.py
+//// from . import api as api
+
+// @filename: lib/api.py
+//// # Empty
+    `;
+
+    const state = parseAndGetTestState(code).state;
+
+    await state.verifyCompletion('included', 'markdown', {
+        ['marker']: {
+            completions: [
+                {
+                    label: 'api',
                     kind: CompletionItemKind.Module,
                 },
             ],

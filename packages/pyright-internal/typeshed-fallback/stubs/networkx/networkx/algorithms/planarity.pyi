@@ -3,10 +3,13 @@ from collections.abc import Generator, Mapping, MutableSet, Reversible
 
 from networkx.classes.digraph import DiGraph
 from networkx.classes.graph import _Node
+from networkx.utils.backends import _dispatchable
 
 __all__ = ["check_planarity", "is_planar", "PlanarEmbedding"]
 
+@_dispatchable
 def is_planar(G) -> bool: ...
+@_dispatchable
 def check_planarity(G, counterexample: bool = False): ...
 
 class Interval:
@@ -20,7 +23,7 @@ class Interval:
 class ConflictPair:
     left: Incomplete
     right: Incomplete
-    def __init__(self, left: Incomplete = ..., right: Incomplete = ...) -> None: ...
+    def __init__(self, left=..., right=...) -> None: ...
     def swap(self) -> None: ...
     def lowest(self, planarity_state): ...
 

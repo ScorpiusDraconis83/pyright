@@ -1,15 +1,21 @@
+import sys
 from collections import deque
 from collections.abc import Iterable
 
 # technically it is using _PySimpleQueue, which has the same interface as SimpleQueue
 from queue import Empty as Empty, Full as Full, SimpleQueue as SimpleQueue
-from typing import Any, Generic, TypeVar, overload
-from typing_extensions import Literal, Self, final
+from typing import Any, Generic, Literal, TypeVar, final, overload
+from typing_extensions import Self
 
 from gevent._waiter import Waiter
 from gevent.hub import Hub
 
-__all__ = ["Queue", "PriorityQueue", "LifoQueue", "SimpleQueue", "JoinableQueue", "Channel", "Empty", "Full"]
+__all__ = ["Queue", "PriorityQueue", "LifoQueue", "SimpleQueue", "JoinableQueue", "Channel", "Empty", "Full", "ShutDown"]
+
+if sys.version_info >= (3, 13):
+    from queue import ShutDown as ShutDown
+else:
+    class ShutDown(Exception): ...
 
 _T = TypeVar("_T")
 
@@ -19,6 +25,7 @@ class Queue(Generic[_T]):
     @property
     def queue(self) -> deque[_T]: ...  # readonly in Cython
     maxsize: int | None
+    is_shutdown: bool
     @overload
     def __init__(self, maxsize: int | None = None) -> None: ...
     @overload
@@ -35,6 +42,7 @@ class Queue(Generic[_T]):
     def put(self, item: _T, block: bool = True, timeout: float | None = None) -> None: ...
     def put_nowait(self, item: _T) -> None: ...
     def qsize(self) -> int: ...
+    def shutdown(self, immediate: bool = False) -> None: ...
     def __bool__(self) -> bool: ...
     def __iter__(self) -> Self: ...
     def __len__(self) -> int: ...

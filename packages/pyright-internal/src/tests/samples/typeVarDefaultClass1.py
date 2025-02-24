@@ -2,9 +2,14 @@
 # In particular, it tests the handling of default TypeVar types for
 # generic classes.
 
-from typing import Generic, Self
-from typing_extensions import TypeVar, ParamSpec, TypeVarTuple, Unpack
+from typing import Generic, Self, assert_type
 
+from typing_extensions import (  # pyright: ignore[reportMissingModuleSource]
+    ParamSpec,
+    TypeVar,
+    TypeVarTuple,
+    Unpack,
+)
 
 T1 = TypeVar("T1")
 T2 = TypeVar("T2", default=int)
@@ -21,10 +26,11 @@ reveal_type(
 )
 
 
-def func_a1(a: ClassA1, b: ClassA1[float], c: ClassA1[float, float]):
+def func_a1(a: ClassA1, b: ClassA1[float], c: ClassA1[float, float], d: ClassA1[()]):
     reveal_type(a, expected_text="ClassA1[int, str]")
     reveal_type(b, expected_text="ClassA1[float, str]")
     reveal_type(c, expected_text="ClassA1[float, float]")
+    reveal_type(d, expected_text="ClassA1[int, str]")
 
 
 class ClassA2(Generic[T1, T2, T3]):
@@ -55,8 +61,7 @@ P2 = ParamSpec("P2", default=[int, str])
 P3 = ParamSpec("P3", default=...)
 
 
-class ClassB1(Generic[P2, P3]):
-    ...
+class ClassB1(Generic[P2, P3]): ...
 
 
 def func_b1(a: ClassB1, b: ClassB1[[float]], c: ClassB1[[float], [float]]):
@@ -71,16 +76,13 @@ Ts3 = TypeVarTuple("Ts3", default=Unpack[tuple[float, ...]])
 Ts4 = TypeVarTuple("Ts4", default=Unpack[tuple[()]])
 
 
-class ClassC1(Generic[*Ts2]):
-    ...
+class ClassC1(Generic[*Ts2]): ...
 
 
-class ClassC2(Generic[T3, *Ts3]):
-    ...
+class ClassC2(Generic[T3, *Ts3]): ...
 
 
-class ClassC3(Generic[T3, *Ts4]):
-    ...
+class ClassC3(Generic[T3, *Ts4]): ...
 
 
 def func_c1(a: ClassC1, b: ClassC1[*tuple[float]]):
@@ -98,3 +100,31 @@ def func_c3(a: ClassC3, b: ClassC3[int], c: ClassC3[int, *tuple[float]]):
     reveal_type(a, expected_text="ClassC3[str]")
     reveal_type(b, expected_text="ClassC3[int]")
     reveal_type(c, expected_text="ClassC3[int, float]")
+
+
+P4 = ParamSpec("P4", default=[float, bool])
+P5 = ParamSpec("P5", default=[bool])
+Ts5 = TypeVarTuple("Ts5")
+
+
+class ClassD(Generic[*Ts5, P4, P5]): ...  # OK
+
+
+reveal_type(
+    ClassD[int, str, complex],
+    expected_text="type[ClassD[int, str, complex, (float, bool), (bool)]]",
+)
+reveal_type(
+    ClassD[int, str, [str, complex]],
+    expected_text="type[ClassD[int, str, (str, complex), (bool)]]",
+)
+
+P6 = ParamSpec("P6", default=[str, int])
+
+
+class ClassE(Generic[P6]): ...
+
+
+assert_type(ClassE, type[ClassE[str, int]])
+assert_type(ClassE(), ClassE[str, int])
+assert_type(ClassE[[bool, bool]](), ClassE[bool, bool])

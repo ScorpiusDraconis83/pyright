@@ -2,10 +2,11 @@
 # a union of type variables.
 
 from os import PathLike
-from typing import AnyStr, Generic, Iterable, Iterator, TypeAlias, TypeVar
+from typing import AnyStr, Generic, Iterable, Iterator, Protocol, TypeAlias, TypeVar
 
 V = TypeVar("V")
 V_co = TypeVar("V_co", covariant=True)
+T = TypeVar("T")
 U = TypeVar("U")
 
 
@@ -34,7 +35,7 @@ class ClassC(Generic[AnyStr]):
     ...
 
 
-class ClassD(Iterator[ClassC[AnyStr]]):
+class ClassD(Iterator[ClassC[AnyStr]], Protocol):
     ...
 
 
@@ -51,3 +52,11 @@ def func3(path: GenericPath[AnyStr]) -> ClassD[AnyStr]:
 
 def func4(val: str):
     func2(func3(val))
+
+
+def func5(a: dict[T, U], b: list[T | U]):
+    pass
+
+
+def func6(a: dict[str, int], b: list[str | int]):
+    func5(a, b)

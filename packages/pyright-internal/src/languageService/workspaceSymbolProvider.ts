@@ -3,7 +3,7 @@
  * Copyright (c) Microsoft Corporation.
  * Licensed under the MIT license.
  *
- * Provide LSP's workspace symbol functionality.
+ * Provide langue server workspace symbol functionality.
  */
 
 import { CancellationToken, Location, ResultProgressReporter, SymbolInformation } from 'vscode-languageserver';
@@ -14,6 +14,7 @@ import { appendArray } from '../common/collectionUtils';
 import { ProgramView } from '../common/extensibility';
 import * as StringUtils from '../common/stringUtils';
 import { Uri } from '../common/uri/uri';
+import { convertUriToLspUriString } from '../common/uri/uriUtils';
 import { Workspace } from '../workspaceFactory';
 import { IndexSymbolData, SymbolIndexer } from './symbolIndexer';
 
@@ -63,12 +64,17 @@ export class WorkspaceSymbolProvider {
             return symbolList;
         }
 
-        const fileInfo = getFileInfo(parseResults.parseTree);
+        const fileInfo = getFileInfo(parseResults.parserOutput.parseTree);
         if (!fileInfo) {
             return symbolList;
         }
 
-        const indexSymbolData = SymbolIndexer.indexSymbols(fileInfo, parseResults, this._token);
+        const indexSymbolData = SymbolIndexer.indexSymbols(
+            fileInfo,
+            parseResults,
+            { includeAliases: false },
+            this._token
+        );
         this.appendWorkspaceSymbolsRecursive(indexSymbolData, program, fileUri, '', symbolList);
 
         return symbolList;
@@ -94,7 +100,7 @@ export class WorkspaceSymbolProvider {
 
             if (StringUtils.isPatternInSymbol(this._query, symbolData.name)) {
                 const location: Location = {
-                    uri: fileUri.toString(),
+                    uri: convertUriToLspUriString(program.fileSystem, fileUri),
                     range: symbolData.selectionRange!,
                 };
 

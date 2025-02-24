@@ -1,6 +1,6 @@
-from _typeshed import StrPath, SupportsRead
-from typing import IO, Protocol
-from typing_extensions import Literal, TypeAlias
+from _typeshed import StrPath, SupportsRead, SupportsWrite
+from typing import IO, Literal, Protocol
+from typing_extensions import TypeAlias
 
 from openpyxl.compat.numbers import NUMPY as NUMPY
 from openpyxl.reader.excel import load_workbook as load_workbook
@@ -25,6 +25,7 @@ _VisibilityType: TypeAlias = Literal["visible", "hidden", "veryHidden"]  # noqa:
 # TODO: Use a proper protocol from ZipFile. See: #10880
 # This alias is to minimize false-positives
 _ZipFileFileProtocol: TypeAlias = StrPath | IO[bytes] | SupportsRead[bytes]  # noqa: Y047
+_ZipFileFileWriteProtocol: TypeAlias = StrPath | IO[bytes] | SupportsWrite[bytes]  # noqa: Y047
 
 class _Decodable(Protocol):  # noqa: Y046
-    def decode(self, __encoding: str) -> str: ...
+    def decode(self, encoding: str, /) -> str: ...

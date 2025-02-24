@@ -14,7 +14,7 @@ from typing import (
     TypedDict,
     Unpack,
 )
-from typing_extensions import ReadOnly
+from typing_extensions import ReadOnly  # pyright: ignore[reportMissingModuleSource]
 
 _T = TypeVar("_T")
 
@@ -210,6 +210,14 @@ class TD19(TypedDict):
 
 def update_a(a: TD18, b: TD19) -> None:
     a.update(b)
+
+
+class TD20(TypedDict):
+    pass
+
+
+td20 = TD20()
+td20.update(TD20())
 
 
 class TD_A1(TypedDict):
